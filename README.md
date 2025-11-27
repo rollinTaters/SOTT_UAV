@@ -1,34 +1,25 @@
-# ParsAy IKA
+# SOTT Unmanned Aerial Vehicle
 
-- Drive Motor Control
-- Image Processing
-  - Turret Command 
-  - Nav Data Output
-- BMS
-- Radio Communication
-- NGC (Navigation Guidance System)
-- LIDAR
-- Simulation
+This is the public repository of the S**ksen Olmaz Teknofest Team
 
 ```mermaid
-graph TD;
-    Computer_Simulation 
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
+graph TD
 
-    RaspPi -->|NGC| Arduino_Drive_Motor_Control;
-    RaspPi -->  Image_Processing;
-    RaspPi -->|Turret command| Arduino_Turret;
-    RaspPi --> Arduino_Radio;
-    
-    Image_Processing -->|Nav_data| _ ;
-    Image_Processing -->|Turret_Command| Turret_Command ;
-    Image_Processing -->|___| Arduino_LIDAR
-            
-    Arduino_Drive -->|Drive motor control| Drive_Motor;
-    Arduino_Radio -->|RF| Arduino_Radio2;
-    
-    BMS_Lipo -->|Power| _X_;
-    
-    Arduino_Lidar -->|Lidar| RaspPi;
+    FC["ESP32s - Flight Computer"]
+    MC["Raspberry Pi zero2 - Mission Computer"]
 
-    Arduino_Command -->|Command| Computer_CommandConsole;
+    FC -->|I2C| IAS["Matek Airspeed Sensor"]
+    FC -->|I2C| IMU["BNO 055 9-DOF IMU"]
+    FC -->|I2C| PWM["16 channel PWM generator"]
+    FC -->|UART| GNSS["NEO 7M GNSS"]
+    FC -->|SPI| NRF["NRF24"]
+    FC -->|UART| MC
+
+    MC -->|USB| CAM["Webcam"]
+
 ```

@@ -23,8 +23,8 @@
 */
 #pragma once
 #include "raylib.h"
-#include <cmath>
 #include <iostream>
+
 
 class Adi {
 public:
@@ -33,7 +33,7 @@ public:
     void updateRollVal_prop(const float);   // 0-1
     void updatePitchVal_prop(const float);  // 0-1
     void updateRollVal(const float);    // degree
-    void updatePitchVal(const float);   // degree
+    void updatePitchVal(const float);   // degree 
     void render();
 
 private:

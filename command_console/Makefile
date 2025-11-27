@@ -2,7 +2,7 @@ CC := g++
 raylib_dir := ./../raylib-5.5_linux_amd64
 
 # ==== command console objects ====
-CC_OBJECTS := command_console.o console_graphics.o gauge.o adi.o user_input.o
+CC_OBJECTS := command_console.o console_graphics.o gauge.o adi.o user_input.o toast.o 
 COMMON_OBJECTS := utility.o comms_module.o video_feed.o
 
 CC_RELEASE_OBJECTS = $(addprefix obj/linux_, $(CC_OBJECTS))
