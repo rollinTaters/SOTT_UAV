@@ -1,0 +1,30 @@
+# debug command_console executable
+command_console/command_console
+
+# debug ngc executable
+ngc/ngc
+
+#debug ccm executable
+central_command/ccm
+
+
+# folder of release builds
+release_builds
+
+# any object files
+*.obj
+obj
+
+# vim swap files
+*.swp
+
+# vim swo files
+*.swo
+
+# Emacs
+*~                    # Backup files
+.#*                   # Auto-save files
+\#*                   # Auto-save files
+
+
+
