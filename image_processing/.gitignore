@@ -1,9 +1,0 @@
-# Emacs
-*~                    # Backup files
-.#*                   # Auto-save files
-\#*                   # Auto-save files
-
-
-# bin and obj directories
-/bin/
-/obj/
