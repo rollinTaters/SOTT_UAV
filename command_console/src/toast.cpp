@@ -7,7 +7,7 @@ Toast::Toast(Vector2 pos, Vector2 res) {
 }
 
 void Toast::render() {
-  DrawRectangleV(position, resolution, bgcolor);  
+  DrawRectangleV(position, resolution, bgColor);  
 }
 
 void Toast::newInfo(std::string msg, StatusCode code) {

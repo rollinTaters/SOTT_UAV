@@ -26,6 +26,7 @@
 #pragma once
 
 #include "raylib.h"
+#include "raymath.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -37,22 +38,19 @@ public:
         type_temperature,
         type_amp,
         type_adi,
-        type_compass,
         type_speedometer,
         type_tachometer,
         type_battery,
         type_signal,
-        type_steering_wheel
     };
 
     Gauge(gauge_type type, Vector2 pos, float dia);
     ~Gauge() { }  // No need to unload font as it's static
 
-    void init();    // loads textures, call when opengl context is ready
-
     void updateVal(const float value); // input is value to be displayed
     void updateProportionalVal(const float value); // input is from 0.f to 1.f
     void render();
+    void render(Vector2 offset);
 
 private:
     static Font m_font;  // Static font shared by all gauges
@@ -60,15 +58,6 @@ private:
 
     gauge_type m_type; // to store gauge type
 
-    // Compass related
-    Texture2D compass_bg; // compass background
-    Texture2D compass_ticks_numbers; // compass ticks and numbers
-    Vector2 compass_bg_pos;
-    Vector2 compass_ticks_pos;
-    // steering wheel related
-    Texture2D steering_wheel;
-    Vector2 steering_wheel_pos;
-    // Ampere and temperature meter related
     Vector2 m_pos; // Top left corner
     float m_dia;   // Diameter in pixels
 
@@ -84,9 +73,18 @@ private:
 
     float m_red_start_value;
     float m_red_end_value;
+    float m_red_start_ang;
+    float m_red_end_ang;
+
+    float m_yellow_start_value;
+    float m_yellow_end_value;
+    float m_yellow_start_ang;
+    float m_yellow_end_ang;
 
     float m_green_start_value;
     float m_green_end_value;
+    float m_green_start_ang;
+    float m_green_end_ang;
 
     Vector2 m_center;   // Center of the gauge
     Vector2 m_needle;   // Needle end position

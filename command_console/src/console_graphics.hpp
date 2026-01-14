@@ -50,26 +50,13 @@
 
 #pragma once
 
-#include "adi.hpp"
 #include "gauge.hpp"
+#include "flight_instruments.hpp"
 #include "raylib.h"
 #include "user_input.hpp"
 #include <cassert>
 
 namespace cg {
-
-extern Gauge gauge_temp;
-extern Gauge gauge_amp;
-extern Gauge gauge_amp2;
-extern Gauge gauge_temp2;
-extern Gauge gauge_speed;
-extern Gauge gauge_compass;
-extern Gauge gauge_tachometer;
-extern Gauge gauge_battery;
-extern Gauge gauge_signal;
-extern Adi gauge_adi;
-extern UserInput input;
-extern Gauge steering_wheel;
 
 void InitWindowSafe(int width, int height, const char *title);
 
@@ -83,6 +70,64 @@ inline void EnsureWindow() {
   assert(isInitialized() &&
          "Can't call cg::InitWindowSafe() before creating objects!");
 }
+
 // Debug test
 void DEBUG_gauge_test();
+
+
+struct FlightInstrumentsPanel
+{
+    Vector2 pos{930,50};
+    Vector2 size{460,780};
+
+    ADI horizon = ADI({230, 180}, 150);
+    HeadingIndicator compass = HeadingIndicator({230, 560}, 165);
+    Altimeter altimeter = Altimeter({380, 30, 80, 300});
+    VerticalSpeedIndicator vsi = VerticalSpeedIndicator({100,210}, 100);
+    AirspeedIndicator airspeed = AirspeedIndicator({0, 30, 80, 300});
+
+    void render()
+    {
+        createPanel( pos, size, DARKGRAY, "Flight Instruments" );
+        horizon.render( pos );
+        compass.render( pos );
+        altimeter.render( pos );
+        airspeed.render( pos );
+        vsi.render( pos );
+    }
+};
+
+struct EngineeringPanel
+{
+    Vector2 pos{1420,50};
+    Vector2 size{400,500};
+
+    Gauge temp1 = Gauge( Gauge::type_temperature, { 15, 55}, 170 );
+    Gauge temp2 = Gauge( Gauge::type_temperature, { 15,230}, 170 );
+    Gauge amp1 = Gauge( Gauge::type_amp,          {225, 55}, 170 );
+    Gauge amp2 = Gauge( Gauge::type_amp,          {225,230}, 170 );
+    Gauge battery = Gauge(Gauge::type_battery,    { 30,400}, 150 );
+    Gauge signal  = Gauge(Gauge::type_signal,     {200,400}, 150 );
+
+    void render()
+    {
+        createPanel( pos, size, DARKGRAY, "Engineering Panel" );
+        temp1.render( pos );
+        temp2.render( pos );
+        amp1.render( pos );
+        amp2.render( pos );
+        battery.render( pos );
+        signal.render( pos );
+    }
+};
+
+//extern Gauge gauge_compass;
+extern Gauge gauge_tachometer;
+extern Gauge gauge_speed;
+
+extern FlightInstrumentsPanel FI_panel;
+extern EngineeringPanel E_panel;
+
+extern UserInput input;
+
 } // namespace cg

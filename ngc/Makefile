@@ -1,16 +1,13 @@
-SFML_dir := ./../SFML/SFML-2.6.x-linux
 raylib_dir := ./../raylib-5.5_linux_amd64
 raylib_x32_dir := ./../raylib-5.5_linux_i386
 
-#SFML_libs := -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -lsfml-network
-#SFML_libs_static := -DSFML_STATIC -MMD -MP -static-libstdc++ -static-libgcc -lsfml-main -lsfml-audio-s -lsfml-graphics-s -lsfml-window-s -lsfml-system-s -lsfml-network-s  -lopengl32 -lfreetype -lwinmm -lgdi32 -lopenal32 -lFLAC -lvorbisenc -lvorbis -logg -lws2_32
 
 # ==== Navigation Guidance and Control objects ====
 NGC_OBJECTS := main.o vehicle.o ngc.o sensor_emulator.o env_emulator.o traction_motor.o
 COMMON_OBJECTS := utility.o comms_module.o video_feed.o
 
-LINUX_NGC_RELEASE_OBJECTS = $(addprefix obj/linux_, $(NGC_OBJECTS))
-LINUX_COMMON_OBJECTS = $(addprefix ../common_code/obj/linux_, $(COMMON_OBJECTS))
+LINUX_NGC_RELEASE_OBJECTS = $(addprefix obj/, $(NGC_OBJECTS))
+LINUX_COMMON_OBJECTS = $(addprefix ../common_code/obj/, $(COMMON_OBJECTS))
 LINUX_NGC_DEBUG_O3_OBJECTS = $(addprefix obj/debug_o3_, $(NGC_OBJECTS))
 LINUX_NGC_DEBUG_GUI_OBJECTS = $(addprefix obj/debug_gui_, $(NGC_OBJECTS))
 LINUX_NGC_PI_OBJECTS = $(addprefix obj/pi_, $(NGC_OBJECTS))
@@ -21,7 +18,7 @@ DEBUG_FLAGS_O3 := -g -ggdb -O3 -Wall -Wextra
 DEBUG_FLAGS_O0 := -g -ggdb -O0 -Wall -Wextra
 RELEASE_FLAGS := -O3 -std=c++17
 
-LINUX_DEBUG_LDFLAGS := -Wl,-rpath=$(raylib_dir)/lib:$(SFML_dir)/lib -I $(raylib_dir)/include -I $(SFML_dir)/include -L$(raylib_dir)/lib -L$(SFML_dir)/lib -lraylib -lsfml-system -lsfml-network
+LINUX_DEBUG_LDFLAGS := -Wl,-rpath=$(raylib_dir)/lib -I $(raylib_dir)/include -L$(raylib_dir)/lib -lraylib 
 LINUX_LDFLAGS := -Wl,-rpath=./lib -I $(raylib_dir)/include -L$(raylib_dir)/lib -lraylib
 LINUX_PI_LDFLAGS := -Wl,-rpath=./lib -I $(raylib_x32_dir)/include -L$(raylib_x32_dir)/lib -lraylib
 
@@ -43,7 +40,7 @@ pi: $(LINUX_NGC_PI_OBJECTS) $(LINUX_COMMON_PI_OBJECTS) $(PI_TEST_PATH)
 #headless: $(LINUX_NGC_DEBUG_O3_OBJECTS) $(LINUX_COMMON_OBJECTS)
 	#$(LINUX_COMPILER) $(DEBUG_FLAGS_O3) $(LINUX_NGC_DEBUG_O3_OBJECTS) $(LINUX_COMMON_OBJECTS) -o ngc $(LINUX_DEBUG_LDFLAGS)
 
-$(LINUX_COMMON_OBJECTS): ../common_code/obj/linux_%.o: ../common_code/src/%.cpp ../common_code/src/%.hpp
+$(LINUX_COMMON_OBJECTS): ../common_code/obj/%.o: ../common_code/src/%.cpp ../common_code/src/%.hpp
 	make -C ../common_code
 	
 $(LINUX_COMMON_PI_OBJECTS): obj/common_pi_%.o: ../common_code/src/%.cpp ../common_code/src/%.hpp

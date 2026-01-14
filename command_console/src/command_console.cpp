@@ -15,7 +15,7 @@
 #include <thread> // this_thread::sleep_for
 
 int main() {
-  std::cout << "Unmanned Land Vehicle Command Console v0.2\n";
+  std::cout << "SOTT UAV Command Console v0.2\n";
 
   std::chrono::steady_clock clock;
   std::chrono::time_point<std::chrono::steady_clock> last_transmission_time;
@@ -53,6 +53,10 @@ int main() {
   video_texFrame =
       LoadTextureFromImage(video_frame); // default no signal screen
 
+
+  // DEBUG
+  float p{0.f},r{0.f},h{0.f},a{0.f},ias{0.f},vsi{0.f};
+
   // main loop
   while (!WindowShouldClose()) {
     // event processing
@@ -68,22 +72,44 @@ int main() {
     if (IsKeyDown(KEY_T)) {
       cg::DEBUG_gauge_test();
     }
+    // DEBUG
+    // Mock data updates
+    if (IsKeyDown(KEY_W)) p -= 0.5f;
+    if (IsKeyDown(KEY_S)) p += 0.5f;
+    if (IsKeyDown(KEY_A)) r += 0.5f;
+    if (IsKeyDown(KEY_D)) r -= 0.5f;
+    if (IsKeyDown(KEY_Q)) h -= 0.5f;
+    if (IsKeyDown(KEY_E)) h += 0.5f;
+    if (IsKeyDown(KEY_UP)) a += 5.0f;
+    if (IsKeyDown(KEY_DOWN)) a -= 5.0f;
+    if (IsKeyDown(KEY_R)) ias += 5.0f;
+    if (IsKeyDown(KEY_F)) ias -= 5.0f;
+    if (IsKeyDown(KEY_T)) vsi += 5.0f;
+    if (IsKeyDown(KEY_G)) vsi -= 5.0f;
+
+    cg::FI_panel.horizon.update(p, r);
+    cg::FI_panel.compass.update(h);
+    cg::FI_panel.altimeter.update(a);
+    cg::FI_panel.airspeed.update(ias);
+    cg::FI_panel.vsi.update(vsi);
+    // DEBUG
 
     // check incoming transmission packets, ALL OF THEM.
-    while (comms_module.packetAvailable()) {
+    while (comms_module.packetAvailable())
+    {
       // read packet
       comms_module.readPacket(packet);
 
       // make sense of packet
-      switch (packet.packet_type) {
+      switch (packet.packet_type)
+      {
       case CommsPacket::console_telemetry:
-        cg::gauge_temp.updateVal(packet.ct_getMotor1Temp());
-        cg::gauge_amp.updateVal(packet.ct_getMotor1Amps());
-        cg::gauge_amp2.updateVal(packet.ct_getMotor2Amps());
-        cg::gauge_temp2.updateVal(packet.ct_getMotor2Temp());
-        cg::gauge_compass.updateVal(packet.ct_getHeading());
-        cg::gauge_adi.updateRollVal(packet.ct_getRoll());
-        cg::gauge_adi.updatePitchVal(packet.ct_getPitch());
+        cg::FI_panel.compass.update(packet.ct_getHeading());
+        cg::FI_panel.horizon.update(packet.ct_getPitch(), packet.ct_getRoll());
+        cg::E_panel.temp1.updateVal(packet.ct_getMotor1Temp());
+        cg::E_panel.temp2.updateVal(packet.ct_getMotor2Temp());
+        cg::E_panel.amp1.updateVal(packet.ct_getMotor1Amps());
+        cg::E_panel.amp2.updateVal(packet.ct_getMotor2Amps());
         cg::gauge_speed.updateVal(packet.ct_getSpeed());
         break;
 
@@ -149,8 +175,9 @@ int main() {
     toast.render();
 
     // render gauges
-    //        cg::renderGauges();
-    //        DrawTextureEx( video_texFrame, {960,50}, 0.f, 3.f, WHITE);
+    cg::renderGauges();
+    DrawTextureEx( video_texFrame, {200,50}, 0.f, 3.f, WHITE);
+
     EndDrawing();
 
     // process input

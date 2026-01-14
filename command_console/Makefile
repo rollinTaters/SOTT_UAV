@@ -2,11 +2,11 @@ CC := g++
 raylib_dir := ./../raylib-5.5_linux_amd64
 
 # ==== command console objects ====
-CC_OBJECTS := command_console.o console_graphics.o gauge.o adi.o user_input.o toast.o 
+CC_OBJECTS := command_console.o console_graphics.o gauge.o user_input.o toast.o 
 COMMON_OBJECTS := utility.o comms_module.o video_feed.o
 
 CC_RELEASE_OBJECTS = $(addprefix obj/linux_, $(CC_OBJECTS))
-COMMON_OBJECTS := $(addprefix ../common_code/obj/linux_, $(COMMON_OBJECTS))
+COMMON_OBJECTS := $(addprefix ../common_code/obj/, $(COMMON_OBJECTS))
 CC_DEBUG_O3_OBJECTS = $(addprefix obj/debug_o3_, $(CC_OBJECTS))
 CC_DEBUG_O0_OBJECTS = $(addprefix obj/debug_o0_, $(CC_OBJECTS))
 
@@ -30,11 +30,11 @@ RELEASE_PATH := release_builds/v$(BUILD_VER)
 command_console: $(CC_DEBUG_O3_OBJECTS) $(COMMON_OBJECTS)
 	$(CC) $(DEBUG_FLAGS_O3) $(CC_DEBUG_O3_OBJECTS) $(COMMON_OBJECTS) -o command_console $(DEBUG_LDFLAGS)
 
-$(COMMON_OBJECTS): ../common_code/obj/linux_%.o: ../common_code/src/%.cpp ../common_code/src/%.hpp
+$(COMMON_OBJECTS): ../common_code/obj/%.o: ../common_code/src/%.cpp ../common_code/src/%.hpp
 	make -C ../common_code
 
 $(CC_DEBUG_O3_OBJECTS): obj/debug_o3_%.o: src/%.cpp src/%.hpp
-	$(CC) $(DEBUG_FLAGS_O3) -c $< -o $@ $(LDFLAGS)
+	$(CC) $(DEBUG_FLAGS_O3) -Wno-missing-field-initializers -c $< -o $@ $(LDFLAGS)
 
 clean:
 	rm -f *.o obj/*.o command_console ../common_code/obj/*.o
