@@ -5,8 +5,8 @@
 
 #include <SPI.h>
 #include "RF24.h"
-#include "pin_layout.hpp"
-#include "../common_code/src/comms_packets.hpp"
+#include "pin_config.hpp"
+#include "comms_packets.hpp"
 
 
 // instantiate an object for nRF24L01 transceiver
@@ -17,7 +17,9 @@ uint8_t uav_address[6] = { "av2st" };
 uint8_t sta_address[6] = { "st2av" };
 
 
-Payload payload;
+CommsPacket packet;
+uint8_t payload[32] = {0};
+
 uint32_t last_received_payload_time = 0;
 uint8_t lost_signal_counter = 0;
 uint16_t total_lost_signal_counter = 0;

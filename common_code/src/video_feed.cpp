@@ -88,12 +88,13 @@ void VideoFeed::TXFrame( void* image_data, size_t size )
         vdp.setFrameID(m_frameID);
         vdp.setFrameSize( m_TX_buffer->data_size );
 
-        std::array<uint8_t, FrameBuffer::chunk_size> payload{};
+        //std::array<uint8_t, FrameBuffer::chunk_size> payload{};
+        uint8_t payload[FrameBuffer::chunk_size] = {0};
 
         size_t offset = chunkID * FrameBuffer::chunk_size;
         size_t copySize = std::min(FrameBuffer::chunk_size, size - offset);
 
-        std::memcpy( payload.data(), &(m_TX_buffer->data)[offset], copySize );
+        std::memcpy( payload, &(m_TX_buffer->data)[offset], copySize );
         vdp.setPayload(payload);
         m_TX_packets.push_back(vdp);
     }
@@ -129,10 +130,12 @@ void VideoFeed::receivePacket(const CommsPacket& vdp)
         m_frameID = packetFrameID;
     }
     size_t offset = chunkID * (m_RX_buffer->chunk_size);
-    auto payload = vdp.getPayload();
+    //std::array<uint8_t, FrameBuffer::chunk_size> payload{};
+    uint8_t payload[FrameBuffer::chunk_size] = {0};
+    vdp.getPayload( payload );
 
     size_t copySize = std::min<size_t>( m_RX_buffer->chunk_size, frame_size - offset);
-    std::memcpy( &((m_RX_buffer->data)[offset]), payload.data(), copySize);
+    std::memcpy( &((m_RX_buffer->data)[offset]), payload, copySize);
 
     /*// DEBUG        ------------
     std::cout<<"\n\n----\nreceivePacket:\n";

@@ -1,27 +1,29 @@
 #pragma once
-#include <cstdint>
-#include <cstring>  // memcpy
-#include <array>
-#include "utility.hpp"
-//#include <iostream> // DEBUG
+//#include <cstdint>    avr does not like this c++ library, we are instead using the c version stdint.h
+#include <stdint.h>
+//#include <cstring>  // memcpy, avr likes c libs, so using string.h instead
+#include <string.h>
+
+#ifndef PI
+#define PI 3.14159265358979323846f
+#endif
 
 struct CommsPacket
 {
     enum PacketType{
         undefined,
 
-        drive_command,    // NOT IMPLEMENTED    CCM -> Drive Module
-        drive_telemetry,  // NOT IMPLEMENTED    Drive Module -> CCM
+        turret,             // MC -> FC(servo driver)
+        flight_control,     // console -> FC
+        fc_telemetry,       // FC -> console/MC
 
-        turret,             // CCM <-> turret module
+        ngc_command,        // MC -> NGC
+        ngc_telemetry,      // NGC -> MC
 
-        ngc_command,        // CCM -> NGC
-        ngc_telemetry,      // NGC -> CCM
-
-        video_packet,       // image processing -> console
-        console_telemetry,  // CCM -> console
-        console_command,    // console -> CCM
-        console_cammand_custom,  // console -> CCM
+        video_packet,       // MC -> FC -> console
+        console_telemetry,  // console -> FC/MC
+        console_command,    // console -> MC
+        console_cammand_custom,  // console -> MC
 
         request1,   // this is an idea
         request2,   // this is an idea
@@ -30,8 +32,8 @@ struct CommsPacket
 
 
     // actual payload of the packet
-    std::uint8_t packet_type = undefined;
-    std::array< std::uint8_t, 31 > data{0};
+    uint8_t packet_type = undefined;
+    uint8_t data[31] = {0};
 
     CommsPacket( PacketType t ):packet_type(t) {}
     CommsPacket():packet_type(undefined) {}
@@ -41,20 +43,20 @@ struct CommsPacket
     void writeFloat_1( float input, int offset, float minval, float maxval )
     {
         // clamp it
-        input = std::max( input, minval );
-        input = std::min( input, maxval );
+        input = (( input>minval )?(input):(minval));
+        input = (( input<maxval )?(input):(maxval));
 
         // make the input fit between designated sizes value range
         float range = maxval - minval;
-        std::uint8_t byte1 = (std::uint8_t)( (input-minval)/range *255 );
+        uint8_t byte1 = (uint8_t)( (input-minval)/range *255 );
 
-        std::memcpy( &(data[offset]), &byte1, sizeof( byte1 ) );
+        memcpy( &(data[offset]), &byte1, sizeof( byte1 ) );
     }
 
     float readFloat_1( int offset, float minval, float maxval ) const
     {
-        std::uint8_t byte1;
-        std::memcpy( &byte1, &(data[offset]), sizeof( byte1 ) );
+        uint8_t byte1;
+        memcpy( &byte1, &(data[offset]), sizeof( byte1 ) );
 
         float range = maxval - minval;
         return ( byte1/255.f * range ) + minval;
@@ -63,46 +65,46 @@ struct CommsPacket
     void writeFloat_2( float input, int offset, float minval, float maxval )
     {
         // clamp it
-        input = std::max( input, minval );
-        input = std::min( input, maxval );
+        input = (( input>minval )?(input):(minval));
+        input = (( input<maxval )?(input):(maxval));
 
         // make the input fit between designated sizes value range
         float range = maxval - minval;
-        std::uint16_t byte2 = (std::uint16_t)( (input-minval)/range *65535 );
+        uint16_t byte2 = (uint16_t)( (input-minval)/range *65535 );
 
-        std::memcpy( &(data[offset]), &byte2, sizeof( byte2 ) );
+        memcpy( &(data[offset]), &byte2, sizeof( byte2 ) );
     }
 
     float readFloat_2( int offset, float minval, float maxval ) const
     {
-        std::uint16_t byte2;
-        std::memcpy( &byte2, &(data[offset]), sizeof( byte2 ) );
+        uint16_t byte2;
+        memcpy( &byte2, &(data[offset]), sizeof( byte2 ) );
 
         float range = maxval - minval;
         return ( byte2/65535.f * range ) + minval;
     }
 
-    void write_2( std::uint16_t input, int offset )
+    void write_2( uint16_t input, int offset )
     {
-        std::uint8_t b1 = (std::uint8_t)(0xFF & input);
-        std::uint8_t b2 = (std::uint8_t)(input >> 8);
+        uint8_t b1 = (uint8_t)(0xFF & input);
+        uint8_t b2 = (uint8_t)(input >> 8);
         data[offset] = b1;
         data[offset+1] = b2;
     }
 
-    std::uint16_t read_2( int offset ) const
+    uint16_t read_2( int offset ) const
     {
-        std::uint16_t b1 = data[offset];
-        std::uint16_t b2 = data[offset+1];
+        uint16_t b1 = data[offset];
+        uint16_t b2 = data[offset+1];
         return ( b1 | (b2 << 8) );
     }
 
-    void write_1( std::uint8_t input, int offset )
+    void write_1( uint8_t input, int offset )
     {
         data[offset] = input;
     }
 
-    std::uint8_t read_1( int offset ) const
+    uint8_t read_1( int offset ) const
     {
         return data[offset];
     }
@@ -111,7 +113,7 @@ struct CommsPacket
     bool isNull() const
     {
         // if there is data, its not null packet
-        for( std::uint8_t d : data )
+        for( uint8_t d : data )
             if( d != 0 )
                 return false;
 
@@ -167,9 +169,9 @@ struct CommsPacket
 
     /* TODO
     // ---- data sent to the ngc module ----
-    std::uint8_t getControlMode(){ return data1; }
+    uint8_t getControlMode(){ return data1; }
 
-    void setControlMode( std::uint8_t inp ){ data1 = inp; }
+    void setControlMode( uint8_t inp ){ data1 = inp; }
     */
 
     /* TODO
@@ -184,24 +186,23 @@ struct CommsPacket
     */
 
     // ----  video data packet ----
-    std::uint16_t getFrameID() const { return read_2( 0 ); }
-    std::uint16_t getChunkID() const { return read_2( 2 ); }
-    std::uint16_t getFrameSize() const { return read_2( 4 ); }  // this has one more byte to expand to
-    //std::uint16_t getTotalChunks() const { return data3;} // optional
-    std::array<std::uint8_t, 25> getPayload() const
+    uint16_t getFrameID() const { return read_2( 0 ); }
+    uint16_t getChunkID() const { return read_2( 2 ); }
+    uint16_t getFrameSize() const { return read_2( 4 ); }  // this has one more byte to expand to
+    //uint16_t getTotalChunks() const { return data3;} // optional
+    void getPayload( uint8_t* le_array ) const
     {
-        std::array<std::uint8_t, 25> le_array;
-        std::memcpy( &le_array, &(data[6]), sizeof(std::uint8_t)*25 );
-        return le_array;
+        // copies 25 bytes of data to input array
+        memcpy( le_array, &(data[6]), sizeof(uint8_t)*25 );
     }
 
-    void setFrameID(std::uint16_t id) { write_2( id, 0 ); }
-    void setChunkID(std::uint16_t id) { write_2( id, 2 ); }
-    void setFrameSize(std::uint16_t size) { write_2( size, 4 ); }
-    //void setTotalChunks(std::uint8_t chunks) { data3 = chunks; } // optional
-    void setPayload(const std::array<std::uint8_t, 25>& inp_data)
+    void setFrameID(uint16_t id) { write_2( id, 0 ); }
+    void setChunkID(uint16_t id) { write_2( id, 2 ); }
+    void setFrameSize(uint16_t size) { write_2( size, 4 ); }
+    //void setTotalChunks(uint8_t chunks) { data3 = chunks; } // optional
+    void setPayload(const uint8_t* inp_data)
     {
-        std::memcpy( &(data[6]), &inp_data, sizeof(std::uint8_t)*25 );
+        memcpy( &(data[6]), inp_data, sizeof(uint8_t)*25 );
     }
 
     // ---- Console Telemetry, from CCM to Console ----
@@ -240,12 +241,12 @@ struct CommsPacket
     float cc_getTurret_azimuth() { return readFloat_2( 4, 0, 2*PI ); }
     float cc_getTurret_elevation() { return readFloat_2( 6, -PI, PI ); }
     
-    void cc_setLaserStatus( std::uint8_t mode ) { write_1( mode, 8 ); }
+    void cc_setLaserStatus( uint8_t mode ) { write_1( mode, 8 ); }
 
     // alternate packet type, this is CommsPacket::console_command_custom
     // Waypoint commands
-    void ccc_setAddWaypoint( float x, float y, float z ) { /* TODO */ }
-    void ccc_getAddWaypoint( float &x, float &y, float &z ) const { /* TODO */ }
+    //void ccc_setAddWaypoint( float x, float y, float z ) { /* TODO */ }
+    //void ccc_getAddWaypoint( float &x, float &y, float &z ) const { /* TODO */ }
 
 };
 
