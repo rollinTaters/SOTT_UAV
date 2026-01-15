@@ -100,7 +100,7 @@ struct FlightInstrumentsPanel
 struct EngineeringPanel
 {
     Vector2 pos{1420,50};
-    Vector2 size{400,500};
+    Vector2 size{400,600};
 
     Gauge temp1 = Gauge( Gauge::type_temperature, { 15, 55}, 170 );
     Gauge temp2 = Gauge( Gauge::type_temperature, { 15,230}, 170 );

@@ -129,7 +129,7 @@ int main() {
         std::cout<<"\n";
         // DEBUG END    ---------------- */
 
-        if (false /*streamer.isFrameReady()*/) // for debug purposes
+        if (streamer.isFrameReady())
         {
           streamer.RXFrame(video_frame_raw, video_frame_size);
           /*// DEBUG        ----------------
