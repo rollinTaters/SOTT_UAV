@@ -1,6 +1,6 @@
 # --- Configuration ---
 PORT = /dev/ttyUSB0
-FQBN = arduino:avr:nano
+FQBN = arduino:avr:nano:cpu=atmega328old
 SKETCH = fc.ino
 
 # Path to a specific external library folder
@@ -14,14 +14,14 @@ LIB_DIR = ~/Arduino/libraries
 all: compile upload
 
 compile:
-	./arduino-cli compile --fqbn $(FQBN) \
+	arduino-cli compile --fqbn $(FQBN) \
 		--build-property "compiler.cpp.extra_flags=-I../common_code/src" \
 		--library $(EXTRA_LIB) \
 		--libraries $(LIB_DIR) \
 		$(SKETCH)
 
 upload:
-	./arduino-cli upload -p $(PORT) --fqbn $(FQBN) $(SKETCH)
+	arduino-cli upload -p $(PORT) --fqbn $(FQBN) $(SKETCH)
 
 # Helper to install a new library from the official registry
 install-deps:
@@ -32,4 +32,4 @@ clean:
 	rm -rf build/
 
 monitor:
-	./arduino-cli monitor -p $(PORT)
+	arduino-cli monitor -p $(PORT) --config 115200

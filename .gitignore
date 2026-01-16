@@ -1,15 +1,14 @@
 # debug command_console executable
 command_console/command_console
 
+#command console log files
+command_console/logs
+
 # debug ngc executable
 ngc/ngc
 
 #debug ccm executable
 central_command/ccm
-
-#arduino-cli for easy compiling and uploading for avr ucontroller
-fc/arduino-cli
-
 
 # folder of release builds
 release_builds

@@ -10,6 +10,7 @@
 #include "console_graphics.hpp"
 #include "raylib.h"
 #include "toast.hpp"
+#include "serial_manager.hpp"
 #include <chrono> // throttling of packet sends
 #include <iostream>
 #include <thread> // this_thread::sleep_for
@@ -27,6 +28,8 @@ int main() {
   
   Toast toast({700, 0}, {500, 200});
   
+  // Serial connection ( to an arduino, it will relay packets thru rf24 )
+  SerialManager serial;
 
   // declare dummy packets
   CommsPacket packet; // this one we use for the data we received
@@ -64,6 +67,10 @@ int main() {
       // ESC to close the application
       break;
     }
+
+    // port selection, connection, reading and logging
+    serial.update();
+
     // clear window for next frame
     BeginDrawing();
     ClearBackground(Color{180, 180, 180, 255});
@@ -93,6 +100,10 @@ int main() {
     cg::FI_panel.airspeed.update(ias);
     cg::FI_panel.vsi.update(vsi);
     // DEBUG
+
+    // TODO bury serial manager into comms module
+    // draw port selection and serial manager verbose output
+    serial.drawMenu();
 
     // check incoming transmission packets, ALL OF THEM.
     while (comms_module.packetAvailable())
@@ -176,7 +187,7 @@ int main() {
 
     // render gauges
     cg::renderGauges();
-    DrawTextureEx( video_texFrame, {200,50}, 0.f, 3.f, WHITE);
+    //DrawTextureEx( video_texFrame, {200,50}, 0.f, 3.f, WHITE);
 
     EndDrawing();
 
