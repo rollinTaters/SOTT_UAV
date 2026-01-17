@@ -81,3 +81,23 @@ void doRadioStuff()
         // TODO we lost contact
     }
 }
+
+
+
+
+/*
+///// arduino code snippet for converting binary to hex ascii
+
+uint8_t myData[32]; // Your raw data
+
+void loop() {
+  // Fill myData with some values...
+  
+  for (int i = 0; i < 32; i++) {
+    if (myData[i] < 16) Serial.print('0'); // Leading zero
+    Serial.print(myData[i], HEX);
+  }
+  Serial.println(); // The crucial "end of frame" marker
+  delay(100);
+}
+*/

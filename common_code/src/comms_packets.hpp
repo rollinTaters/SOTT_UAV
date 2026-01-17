@@ -37,6 +37,8 @@ struct CommsPacket
 
     CommsPacket( PacketType t ):packet_type(t) {}
     CommsPacket():packet_type(undefined) {}
+    CommsPacket( uint8_t raw[32] ):packet_type(raw[0])
+    { memcpy( &(data[0]), &(raw[1]), 31 ); }
 
 
     private:
@@ -109,6 +111,12 @@ struct CommsPacket
         return data[offset];
     }
     public:
+
+    void getRaw( uint8_t* raw ) const
+    {
+        raw[0] = packet_type;
+        memcpy( &(raw[1]), &(data[0]), 31 );
+    }
 
     bool isNull() const
     {

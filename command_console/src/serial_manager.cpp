@@ -28,12 +28,45 @@ SerialPort::SerialPort(const char* portName)
 
 SerialPort::~SerialPort() { if (fd != -1) ::close(fd); }
 
-int SerialPort::readSerial(char* buffer, int size) {
-    return ::read(fd, buffer, size);
+int SerialPort::readSerial(char* buffer, int size)
+{
+    if (fd == -1) return -1;
+    int n = ::read(fd, buffer, size);
+    
+    if (n < 0) {
+        // EAGAIN or EWOULDBLOCK just mean no data is ready yet (normal)
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            return -2; // Special code for "Hardware Disconnected"
+        }
+    }
+    return n;
 }
 
-int SerialPort::writeSerial(const char* data) {
-    return ::write(fd, data, strlen(data));
+int SerialPort::writeSerial(const char* data)
+{
+    if (fd == -1) return -1;
+
+    // We use ::write to call the POSIX system function directly
+    // strlen(data) provides the number of bytes to send
+    int bytesWritten = ::write(fd, data, strlen(data));
+
+    if (bytesWritten < 0) {
+        // Check if the error is a genuine hardware failure
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            // Hardware disconnected or port error
+            return -2; 
+        }
+        return 0; // Buffer full or busy, but still connected
+    }
+    
+    return bytesWritten;
+}
+
+bool SerialPort::isValid()
+{
+    if (fd == -1) return false;
+    // fcntl check to see if the file descriptor is still valid
+    return fcntl(fd, F_GETFL) != -1;
 }
 
 
@@ -47,6 +80,18 @@ int SerialPort::writeSerial(const char* data) {
 #include <sstream>
 
 namespace fs = std::filesystem;
+
+// Helper function to convert 2 hex chars back to 1 byte
+uint8_t HexToByte(char high, char low)
+{
+    auto hexCharToInt = [](char c) {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return 0;
+    };
+    return (hexCharToInt(high) << 4) | hexCharToInt(low);
+}
 
 void SerialManager::OpenLogFile()
 {
@@ -101,10 +146,21 @@ std::string SerialManager::GetTimestamp()
     return oss.str();
 }
 
+void SerialManager::handleDisconnect()
+{
+    TraceLog(LOG_WARNING, "SERIAL: Device lost! Disconnecting...");
+    if (logFile.is_open()) {
+        logFile << GetTimestamp() << " [ERROR] Connection lost." << std::endl;
+        logFile.close();
+    }
+    disconnect(); // Frees the SerialPort object and sets isConnected = false
+    refreshPorts(); // Re-scan /dev/ so the user can see if it's back
+}
 
-SerialManager::SerialManager(
-        int menuX, int menuY ): menu_x(menuX), menu_y(menuY), menu_w(450), menu_h(180)
+SerialManager::SerialManager( int menuX, int menuY ) :
+    menu_x(menuX), menu_y(menuY), menu_w(450), menu_h(180)
 { refreshPorts(); }
+
 SerialManager::~SerialManager() { disconnect(); }
 
 void SerialManager::refreshPorts()
@@ -169,7 +225,7 @@ void SerialManager::update()
         }
         if (isConnected) OpenLogFile(); // Open log when connected
     } else {
-        // logging, and updating log file
+        //-- logging, and updating log file
         std::time_t t = std::time(nullptr);
         std::tm* now = std::localtime(&t);
 
@@ -184,38 +240,19 @@ void SerialManager::update()
             // Optional: Print to console so you know rotation happened
             TraceLog(LOG_INFO, "SerialManager: Rotating log file for new 30-minute block.");
         }
-        // end of log file updating
+        //-- end of log file updating
 
-        // READ LOGIC: Process incoming data
-        char temp[128];
-        int bytesRead = port->readSerial(temp, sizeof(temp) - 1);
-        
-        if (bytesRead > 0) {
-            temp[bytesRead] = '\0';
-            internalBuffer += temp;
-
-            // Process lines to keep log clean and memory low
-            size_t nPos;
-            while ((nPos = internalBuffer.find('\n')) != std::string::npos) {
-                std::string line = internalBuffer.substr(0, nPos);
-                
-                // Clean carriage returns if coming from Arduino's println
-                if (!line.empty() && line.back() == '\r') line.pop_back();
-
-                std::string timestampedLine = GetTimestamp() + line;
-
-                // 1. Update UI (we show the timestamped version)
-                lastReceivedLine = timestampedLine; 
-                
-                // 2. Write to Disk
-                if (logFile.is_open()) {
-                    logFile << timestampedLine << std::endl;
-                    logFile.flush(); 
-                }
-
-                internalBuffer.erase(0, nPos + 1);
-            }
+        // Check if the file descriptor is still alive at the OS level
+        if (fcntl(port->fd, F_GETFL) == -1) {
+            handleDisconnect();
+            return;
         }
+
+        // I think its self explanatory. read serial buffer
+        readData();
+
+        // Periodically check for "Hang up" (optional but recommended)
+        if (IsKeyPressed(KEY_BACKSPACE)) handleDisconnect();
     }
 }
 
@@ -239,6 +276,80 @@ void SerialManager::drawMenu()
 
 void SerialManager::sendData(const char* data)
 {
-    if (isConnected && port) port->writeSerial(data);
+    if (isConnected && port) {
+        int result = port->writeSerial(data);
+        
+        if (result == -2) {
+            // If writing fails due to hardware loss, trigger the disconnect handler
+            handleDisconnect();
+        }
+    }
 }
+
+
+void SerialManager::readData()
+{
+    // READ LOGIC: Process incoming data
+    char temp[256];
+    int bytesRead = port->readSerial(temp, sizeof(temp) - 1);
+    
+    if (bytesRead == -2 ) {   // Hardware error detected, (possible cable yank)
+        handleDisconnect();
+    } else if (bytesRead > 0) {
+        temp[bytesRead] = '\0';
+        internalBuffer += temp;
+
+        // Process lines to keep log clean and memory low
+        size_t nPos;
+        while ((nPos = internalBuffer.find('\n')) != std::string::npos) {
+            std::string line = internalBuffer.substr(0, nPos);
+            internalBuffer.erase(0, nPos + 1);
+            
+            // Clean carriage returns if coming from Arduino's println
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+
+
+            /*
+            // XXX ASCII START XXX
+            // 1. Update UI (we show the timestamped version)
+            lastReceivedLine = GetTimestamp() + line;
+            // XXX ASCII END XXX
+            */
+
+
+            // XXX HEX START XXX
+            // We expect exactly 64 characters (32 bytes * 2)
+            // else it gets discarded (possibly corrupt) and we try to read the next line
+            if (line.length() != 64) continue;
+            uint8_t rawData[32];
+            for (int i = 0; i < 32; i++) {
+                rawData[i] = HexToByte(line[i * 2], line[i * 2 + 1]);
+            }
+            // rawData is the 32 byte comms packet. add it to internal fifo queueueueu
+            packet_q.emplace( rawData );
+            // XXX HEX END XXX
+            
+            // 2. Write to Disk
+            if (logFile.is_open()) {
+                logFile << GetTimestamp() << line << std::endl;
+                logFile.flush(); 
+            }
+
+        }
+    }
+}
+
+bool SerialManager::getPacket( CommsPacket& packet )
+{
+    if( packet_q.empty() ) return false;
+    packet = packet_q.front();
+    packet_q.pop();
+    return true;
+}
+
+
+
+
+
+
 

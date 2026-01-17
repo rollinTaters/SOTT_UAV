@@ -15,6 +15,61 @@
 #include <iostream>
 #include <thread> // this_thread::sleep_for
 
+int eatPacket( CommsPacket& packet )
+{
+    // make sense of packet
+    switch (packet.packet_type)
+    {
+    case CommsPacket::console_telemetry:
+        cg::FI_panel.compass.update(packet.ct_getHeading());
+        cg::FI_panel.horizon.update(packet.ct_getPitch(), packet.ct_getRoll());
+        cg::E_panel.temp1.updateVal(packet.ct_getMotor1Temp());
+        cg::E_panel.temp2.updateVal(packet.ct_getMotor2Temp());
+        cg::E_panel.amp1.updateVal(packet.ct_getMotor1Amps());
+        cg::E_panel.amp2.updateVal(packet.ct_getMotor2Amps());
+        cg::gauge_speed.updateVal(packet.ct_getSpeed());
+        /*
+    cg::FI_panel.horizon.update(p, r);
+    cg::FI_panel.compass.update(h);
+    cg::FI_panel.altimeter.update(a);
+    cg::FI_panel.airspeed.update(ias);
+    cg::FI_panel.vsi.update(vsi);
+    */
+    break;
+
+    case CommsPacket::console_command:
+        std::cerr << " why are we receiving a console command packet when we "
+                     "should be the one sending it?\n";
+    break;
+
+    case CommsPacket::video_packet:
+    /*
+        streamer.receivePacket(packet);
+        if (streamer.isFrameReady())
+        {
+          streamer.RXFrame(video_frame_raw, video_frame_size);
+
+          UnloadImage(video_frame);
+          video_frame = LoadImageFromMemory(".png", video_frame_raw, video_frame_size);
+
+          UnloadTexture(video_texFrame);
+          video_texFrame = LoadTextureFromImage(video_frame);
+        }
+        */
+    break;
+
+    case CommsPacket::undefined:
+        std::cerr << "Warning: Received undefined packet type" << std::endl;
+    break;
+
+    default:
+        std::cerr << "Error: Received unknown packet type: "
+                  << (int)packet.packet_type << std::endl;
+    break;
+    }
+}
+
+
 int main() {
   std::cout << "SOTT UAV Command Console v0.2\n";
 
@@ -57,8 +112,6 @@ int main() {
       LoadTextureFromImage(video_frame); // default no signal screen
 
 
-  // DEBUG
-  float p{0.f},r{0.f},h{0.f},a{0.f},ias{0.f},vsi{0.f};
 
   // main loop
   while (!WindowShouldClose()) {
@@ -79,27 +132,6 @@ int main() {
     if (IsKeyDown(KEY_T)) {
       cg::DEBUG_gauge_test();
     }
-    // DEBUG
-    // Mock data updates
-    if (IsKeyDown(KEY_W)) p -= 0.5f;
-    if (IsKeyDown(KEY_S)) p += 0.5f;
-    if (IsKeyDown(KEY_A)) r += 0.5f;
-    if (IsKeyDown(KEY_D)) r -= 0.5f;
-    if (IsKeyDown(KEY_Q)) h -= 0.5f;
-    if (IsKeyDown(KEY_E)) h += 0.5f;
-    if (IsKeyDown(KEY_UP)) a += 5.0f;
-    if (IsKeyDown(KEY_DOWN)) a -= 5.0f;
-    if (IsKeyDown(KEY_R)) ias += 5.0f;
-    if (IsKeyDown(KEY_F)) ias -= 5.0f;
-    if (IsKeyDown(KEY_T)) vsi += 5.0f;
-    if (IsKeyDown(KEY_G)) vsi -= 5.0f;
-
-    cg::FI_panel.horizon.update(p, r);
-    cg::FI_panel.compass.update(h);
-    cg::FI_panel.altimeter.update(a);
-    cg::FI_panel.airspeed.update(ias);
-    cg::FI_panel.vsi.update(vsi);
-    // DEBUG
 
     // TODO bury serial manager into comms module
     // draw port selection and serial manager verbose output
@@ -110,76 +142,12 @@ int main() {
     {
       // read packet
       comms_module.readPacket(packet);
-
-      // make sense of packet
-      switch (packet.packet_type)
-      {
-      case CommsPacket::console_telemetry:
-        cg::FI_panel.compass.update(packet.ct_getHeading());
-        cg::FI_panel.horizon.update(packet.ct_getPitch(), packet.ct_getRoll());
-        cg::E_panel.temp1.updateVal(packet.ct_getMotor1Temp());
-        cg::E_panel.temp2.updateVal(packet.ct_getMotor2Temp());
-        cg::E_panel.amp1.updateVal(packet.ct_getMotor1Amps());
-        cg::E_panel.amp2.updateVal(packet.ct_getMotor2Amps());
-        cg::gauge_speed.updateVal(packet.ct_getSpeed());
-        break;
-
-      case CommsPacket::console_command:
-        std::cerr << " why are we receiving a console command packet when we "
-                     "should be the one sending it?\n";
-        break;
-
-      case CommsPacket::video_packet:
-        streamer.receivePacket(packet);
-        /*// DEBUG        ----------------
-        std::cout<<"received video packet. frameID:
-        "<<streamer.getCurrentFrameID()<<"\n"; for( auto d : packet.data )
-        {
-            std::cout<< (int)d <<" ";
-        }
-        std::cout<<"\n";
-        // DEBUG END    ---------------- */
-
-        if (streamer.isFrameReady())
-        {
-          streamer.RXFrame(video_frame_raw, video_frame_size);
-          /*// DEBUG        ----------------
-          std::cout<<"Command Console Main.cpp:\nRX frame size: "
-              <<video_frame_size<<"\n";
-          std::cout<<"raw frames:\n";
-          for( int i = 0; i < video_frame_size; i++ )
-          {
-              std::cout<< (int)( video_frame_raw[i] ) << " ";
-          }
-          std::cout<<"\n";
-          // DEBUG END    ---------------- */
-
-          // ImageFormat( &video_frame, PIXELFORMAT_UNCOMPRESSED_R8G8B8 );  //
-          // revert back to 3 channels
-          UnloadImage(video_frame);
-          video_frame =
-              LoadImageFromMemory(".png", video_frame_raw, video_frame_size);
-
-          // because there is a bug in raylib and UpdateTexture function only
-          // accepts this format
-          // ImageFormat( &video_frame, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 );
-          // Color* pixels = LoadImageColors( video_frame );
-          // UpdateTexture( video_texFrame, pixels );
-
-          UnloadTexture(video_texFrame);
-          video_texFrame = LoadTextureFromImage(video_frame);
-        }
-        break;
-
-      case CommsPacket::undefined:
-        std::cerr << "Warning: Received undefined packet type" << std::endl;
-        break;
-
-      default:
-        std::cerr << "Error: Received unknown packet type: "
-                  << (int)packet.packet_type << std::endl;
-        break;
-      }
+      eatPacket(packet);
+    }
+    // check incoming serial packets
+    while( serial.getPacket(packet) )
+    {
+        eatPacket(packet);
     }
 
 
@@ -187,7 +155,7 @@ int main() {
 
     // render gauges
     cg::renderGauges();
-    //DrawTextureEx( video_texFrame, {200,50}, 0.f, 3.f, WHITE);
+    DrawTextureEx( video_texFrame, {200,50}, 0.f, 3.f, WHITE);
 
     EndDrawing();
 
