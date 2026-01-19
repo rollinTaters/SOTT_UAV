@@ -7,8 +7,16 @@ command_console/logs
 # debug ngc executable
 ngc/ngc
 
-#debug ccm executable
-central_command/ccm
+# flight simulator executable
+flight_sim/flight_sim
+
+# flight simulator logs
+flight_sim/flight_data.csv
+flight_sim/logs
+
+# mission controller executable
+mc/mc
+mc/mc_gui
 
 # folder of release builds
 release_builds
