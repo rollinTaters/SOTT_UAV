@@ -83,8 +83,10 @@ int main() {
   
   Toast toast({700, 0}, {500, 200});
   
+#ifndef TABLET_MODE
   // Serial connection ( to an arduino, it will relay packets thru rf24 )
   SerialManager serial;
+#endif
 
   // declare dummy packets
   CommsPacket packet; // this one we use for the data we received
@@ -121,8 +123,10 @@ int main() {
       break;
     }
 
+#ifndef TABLET_MODE
     // port selection, connection, reading and logging
     serial.update();
+#endif
 
     // clear window for next frame
     BeginDrawing();
@@ -133,9 +137,17 @@ int main() {
       cg::DEBUG_gauge_test();
     }
 
+#ifndef TABLET_MODE
     // TODO bury serial manager into comms module
     // draw port selection and serial manager verbose output
     serial.drawMenu();
+
+    // check incoming serial packets
+    while( serial.getPacket(packet) )
+    {
+        eatPacket(packet);
+    }
+#endif
 
     // check incoming transmission packets, ALL OF THEM.
     while (comms_module.packetAvailable())
@@ -143,11 +155,6 @@ int main() {
       // read packet
       comms_module.readPacket(packet);
       eatPacket(packet);
-    }
-    // check incoming serial packets
-    while( serial.getPacket(packet) )
-    {
-        eatPacket(packet);
     }
 
 

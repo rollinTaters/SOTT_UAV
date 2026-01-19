@@ -22,7 +22,7 @@ SerialPort::SerialPort(const char* portName)
         options.c_cflag &= ~CSIZE;
         options.c_cflag |= CS8;     // 8 data bits
         tcsetattr(fd, TCSANOW, &options);
-        fcntl(fd, F_SETFL, FNDELAY); // Non-blocking reads
+        fcntl(fd, F_SETFL, O_NONBLOCK); // Non-blocking reads
     }
 }
 
@@ -215,7 +215,7 @@ void SerialManager::update()
         hoveredIndex = -1;
 
         for (auto i = 0; i < availablePorts.size(); i++) {
-            Rectangle rect = { menu_x+50, (float)(menu_y+100 + i * 40), 300, 30 };
+            Rectangle rect = { (float)(menu_x+50), (float)(menu_y+100 + i * 40), 300, 30 };
             if (CheckCollisionPointRec(mouse, rect)) {
                 hoveredIndex = i;
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
