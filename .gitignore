@@ -21,6 +21,9 @@ mc/mc_gui
 # folder of release builds
 release_builds
 
+# cfd sim folders for specific flight states
+openfoam/U*
+
 # any object files
 *.obj
 obj
