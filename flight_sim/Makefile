@@ -3,7 +3,7 @@ raylib_dir := ./../raylib-5.5_linux_amd64
 raylib_tablet_dir := ./../raylib-5.5_tablet_aarch64
 
 # ==== command console objects ====
-FS_OBJECTS := sim_engine.o
+FS_OBJECTS := sim_engine.o joystick.o
 COMMON_OBJECTS := utility.o comms_module.o video_feed.o
 
 FS_RELEASE_OBJECTS = $(addprefix obj/linux_, $(FS_OBJECTS))
@@ -18,10 +18,10 @@ DEBUG_FLAGS_O3 := -g -ggdb -O3 -Wall -Wextra
 DEBUG_FLAGS_O0 := -g -ggdb -O0 -Wall -Wextra
 RELEASE_FLAGS := -O3 -std=c++17
 
-DEBUG_LDFLAGS := -Wl,-rpath=$(raylib_dir)/lib -I $(raylib_dir)/include  -L$(raylib_dir)/lib -lraylib
-LDFLAGS := -Wl,-rpath=./lib  -I $(raylib_dir)/include  -L$(raylib_dir)/lib  -lraylib
+DEBUG_LDFLAGS := -Wl,-rpath=$(raylib_dir)/lib -I $(raylib_dir)/include  -L$(raylib_dir)/lib -lraylib -lSDL2
+LDFLAGS := -Wl,-rpath=./lib  -I $(raylib_dir)/include  -L$(raylib_dir)/lib  -lraylib -lSDL2
 
-TABLET_LDFLAGS := -Wl,-rpath=$(raylib_tablet_dir)/lib -I $(raylib_tablet_dir)/include  -L$(raylib_tablet_dir)/lib -lraylib
+TABLET_LDFLAGS := -Wl,-rpath=$(raylib_tablet_dir)/lib -I $(raylib_tablet_dir)/include  -L$(raylib_tablet_dir)/lib -lraylib -lSDL2
 
 
 BUILD_VER := 0.2

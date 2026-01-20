@@ -4,11 +4,112 @@
 #include <fstream>
 #include <algorithm>
 #include "aircraft.hpp"
+#include "joystick.hpp"
 #include "flight_visualizer.h"
+#include "autopilot.cpp"
 
 // Constants
 const double g = 9.81;  // gravity (m/s^2)
 const double rho = 1.225;  // air density at sea level (kg/m^3)
+
+
+// Helper function to create a simple 2D table
+AeroTable2D createTable(const std::vector<double>& alphas, 
+                        const std::vector<double>& betas,
+                        const std::vector<std::vector<double>>& data)
+{
+    AeroTable2D table;
+    table.alphas = alphas;
+    table.betas = betas;
+    table.data = data;
+    return table;
+}
+
+// populates the aero model of the input aircraft
+void MakeCessna( Aircraft& cessna )
+{
+    cessna.mass = 1000;      // kg
+    cessna.S = 16.2;         // m^2
+    cessna.chord = 1.5;      // m
+    cessna.span = 11.0;      // m
+    cessna.Ixx = 1285;       // kg*m^2
+    cessna.Iyy = 1824;       // kg*m^2
+    cessna.Izz = 2666;       // kg*m^2
+    cessna.Ixz = 0;          // kg*m^2
+    
+    // Define angle ranges
+    std::vector<double> alphas = {-0.174, 0.0, 0.087, 0.174, 0.262, 0.349};  // -10 to 20 deg
+    std::vector<double> betas = {-0.174, -0.087, 0.0, 0.087, 0.174};  // -10 to 10 deg
+    
+    // CL table (varies strongly with alpha, weakly with beta)
+    cessna.CL_table = createTable(alphas, betas, {
+        {-0.32, -0.30, -0.30, -0.30, -0.32},  // alpha = -10°
+        { 0.18,  0.20,  0.20,  0.20,  0.18},  // alpha =   0°
+        { 0.68,  0.70,  0.70,  0.70,  0.68},  // alpha =   5°
+        { 1.08,  1.10,  1.10,  1.10,  1.08},  // alpha =  10°
+        { 1.28,  1.30,  1.30,  1.30,  1.28},  // alpha =  15°
+        { 1.18,  1.20,  1.20,  1.20,  1.18}   // alpha =  20° (post-stall)
+    });
+    
+    // CD table (increases with alpha and |beta|)
+    cessna.CD_table = createTable(alphas, betas, {
+        {0.035, 0.032, 0.030, 0.032, 0.035},  // alpha = -10°
+        {0.028, 0.026, 0.025, 0.026, 0.028},  // alpha =   0°
+        {0.032, 0.031, 0.030, 0.031, 0.032},  // alpha =   5°
+        {0.044, 0.042, 0.040, 0.042, 0.044},  // alpha =  10°
+        {0.085, 0.082, 0.080, 0.082, 0.085},  // alpha =  15°
+        {0.155, 0.152, 0.150, 0.152, 0.155}   // alpha =  20°
+    });
+    
+    // CY table (side force, mainly from beta)
+    cessna.CY_table = createTable(alphas, betas, {
+        {0.30, 0.15, 0.0, -0.15, -0.30},
+        {0.30, 0.15, 0.0, -0.15, -0.30},
+        {0.30, 0.15, 0.0, -0.15, -0.30},
+        {0.30, 0.15, 0.0, -0.15, -0.30},
+        {0.30, 0.15, 0.0, -0.15, -0.30},
+        {0.30, 0.15, 0.0, -0.15, -0.30}
+    });
+    
+    // Cl table (rolling moment, mainly from beta due to dihedral)
+    cessna.Cl_table = createTable(alphas, betas, {
+        {0.015, 0.008, 0.0, -0.008, -0.015},
+        {0.015, 0.008, 0.0, -0.008, -0.015},
+        {0.015, 0.008, 0.0, -0.008, -0.015},
+        {0.015, 0.008, 0.0, -0.008, -0.015},
+        {0.015, 0.008, 0.0, -0.008, -0.015},
+        {0.015, 0.008, 0.0, -0.008, -0.015}
+    });
+    
+    // Cm table (pitching moment)
+    cessna.Cm_table = createTable(alphas, betas, {
+        { 0.00,  0.00,  0.00,  0.00,  0.00},
+        { 0.00,  0.00,  0.00,  0.00,  0.00},
+        { 0.018, 0.020, 0.020, 0.020, 0.018},
+        { 0.038, 0.040, 0.040, 0.040, 0.038},
+        { 0.048, 0.050, 0.050, 0.050, 0.048},
+        { 0.058, 0.060, 0.060, 0.060, 0.058}
+    });
+    
+    // Cn table (yawing moment, weathercock stability)
+    cessna.Cn_table = createTable(alphas, betas, {
+        {-0.020, -0.010, 0.0, 0.010, 0.020},
+        {-0.020, -0.010, 0.0, 0.010, 0.020},
+        {-0.020, -0.010, 0.0, 0.010, 0.020},
+        {-0.020, -0.010, 0.0, 0.010, 0.020},
+        {-0.020, -0.010, 0.0, 0.010, 0.020},
+        {-0.020, -0.010, 0.0, 0.010, 0.020}
+    });
+    
+    // Control derivatives
+    cessna.controls.CL_de = 0.4;   // Elevator lift effectiveness
+    cessna.controls.Cm_de = -1.2;  // Elevator pitch effectiveness (negative = pitch down with up elevator)
+    cessna.controls.Cl_da = 0.15;  // Aileron roll effectiveness
+    cessna.controls.Cn_da = -0.01; // Adverse yaw
+    cessna.controls.CY_dr = 0.3;   // Rudder side force
+    cessna.controls.Cl_dr = 0.01;  // Rudder roll coupling
+    cessna.controls.Cn_dr = -0.1;  // Rudder yaw effectiveness
+}
 
 
 // Calculate derivatives
@@ -175,6 +276,9 @@ int main()
     
     // Control inputs
     ControlSignal control_s;
+
+    // joystick
+    Joystick joy;
     
     // Simulation parameters
     double dt = 0.01;  // 10ms timestep
@@ -191,8 +295,10 @@ int main()
     std::cout << "Starting full 6-DOF flight simulation...\n";
     std::cout << "Aerodynamic model: CL, CD, CY, Cl, Cm, Cn = f(alpha, beta)\n\n";
     
-    while (!viz.ShouldClose())
+    while (true)    // inf loop of simulation
     {
+        if( viz.ShouldClose() ) break;  // GUI wanted to end program
+
         // Output state
         if (fmod(simTime, 0.1) < dt)
         {
@@ -212,34 +318,27 @@ int main()
         }
         
         // pilot input
-        viz.GetControlInputs( control_s );
+        //viz.GetControlInputs( control_s );
+
+        joy.update();
+        joy.getControlInputs( control_s );
+        joy.draw_debug();
 
         // tame it down a bit
         control_s.elevator *= 0.3f;
         control_s.aileron *= 0.3f;
         control_s.rudder *= 0.3f;
 
-        // Simple autopilot example: maintain altitude and wings level
-        control_s.elevator -= -0.5 * (state.theta - 0.05) - 0.2 * state.q;  // Pitch hold
-        control_s.aileron += -0.3 * state.phi - 0.1 * state.p;  // Roll hold
-        control_s.rudder -= -0.2 * state.r;  // Yaw damper
+        if( joy.btnPressed[2] )
+            AP::mode = AP::OFF;
+        if( joy.btnPressed[3] )
+            AP::mode = AP::ATTITUDE_HOLD;
 
-        // clamp excessive auto pilot
-        control_s.elevator = Clamp( control_s.elevator, -1.0f, 1.0f );
-        control_s.aileron = Clamp( control_s.aileron, -1.0f, 1.0f );
-        control_s.rudder = Clamp( control_s.rudder, -1.0f, 1.0f );
-        
-        /*
-        // Example: coordinated turn at t=10s
-        if (simTime > 10.0 && simTime < 15.0)
-        {
-            control_s.aileron = 0.2;  // Roll right
-            control_s.rudder = 0.05;  // Coordinated rudder
-        }
-        */
+        // autopilot does magic here
+        AP::run( state, control_s );
 
         // DEBUG
-        if (IsKeyPressed(KEY_R))
+        if (IsKeyPressed(KEY_R) || joy.btnPressed[1])
         { // reset flight state
             state = {0};
             state.u = 80.0;   // 50 m/s forward
