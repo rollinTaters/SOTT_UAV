@@ -24,13 +24,13 @@ surfaceFile "constant/triSurface/sott1.stl";
 
 minCellSize 0.004;
 
-maxCellSize 0.800;
+maxCellSize 0.100;
 
-boundaryCellSize 0.110;
+//boundaryCellSize 0.110;
 
 localRefinement
 {
-    "plane"
+    "plane.*"
     {
         cellSize 0.020;
         //additionalRefinementLevels 6;
@@ -38,11 +38,24 @@ localRefinement
     }
 }
 
+objectRefinements
+{
+	VolumeRefinement01
+	{
+		type		box;
+		cellSize	0.050;
+		centre		(1.5 0 0);
+		lengthX		4.5;
+		lengthY		2;
+		lengthZ		2;
+	}
+}
+
 boundaryLayers
 {
-    patchBoundaryLayers
+    wallBoundaryLayers
     {
-        "plane"
+        "plane.*"
         {
             nLayers 5;
             thicknessRatio 1.1;
@@ -67,13 +80,13 @@ renameBoundary
         
         "xMax"
         {
-            type    patch;
+            type    inletOutlet;
             newName inlet;
         }
 
         "xMin"
         {
-            type    patch;
+            type    inletOutlet;
             newName outlet;
         }
 
@@ -91,7 +104,7 @@ renameBoundary
 
         "zMin"
         {
-            type    wall;
+            type    patch;
             newName floor;
         }
 

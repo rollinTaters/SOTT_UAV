@@ -48,7 +48,8 @@ boundaryField
 
     floor
     {
-        type            nutkWallFunction;
+        //type            nutkWallFunction;
+        type			calculated;
         value           uniform 0;
     }
 

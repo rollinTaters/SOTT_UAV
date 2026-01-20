@@ -34,12 +34,12 @@ boundaryField
         type            fixedValue;
         value           $internalField;
     }
-
+/*
     floor
     {
         type            zeroGradient;
     }
-
+*/
     plane
     {
         type            zeroGradient;

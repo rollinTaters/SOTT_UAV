@@ -9,40 +9,43 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       volScalarField;
-    object      omega;
+    class       volVectorField;
+    object      U;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #include        "include/initialConditions"
 
-dimensions      [0 0 -1 0 0 0 0];
+dimensions      [0 1 -1 0 0 0 0];
 
-internalField   uniform $turbulentOmega;
+internalField   uniform $flowVelocity;
 
 boundaryField
 {
     #includeEtc "caseDicts/setConstraintTypes"
 
-    #include "include/fixedInlet"
+    inlet
+	{
+    	type  			fixedValue;
+    	value 			$internalField;
+	}
 
     outlet
     {
         type            inletOutlet;
-        inletValue      $internalField;
+        inletValue      uniform (0 0 0);
         value           $internalField;
     }
-
+/*
     floor
     {
-        type            omegaWallFunction;
+        type            fixedValue;
         value           $internalField;
     }
-
+*/
     plane
     {
-        type            omegaWallFunction;
-        value           $internalField;
+        type            noSlip;
     }
 
     #include "include/frontBackUpperPatches"

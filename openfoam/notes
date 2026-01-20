@@ -1,0 +1,19 @@
+to dear me, Taters;
+
+your openfoam is installed at /usr/lib/openfoam/openfoam2506
+you wanna run that bashrc located inside the etc folder before running terminal commands (..../openfoam2506/etc/bashrc)
+and you do that by "source <bashrc_file_here>"
+
+you decided to use cfMesh instead of snappyHexMesh
+
+Meshing tools:
+- cartesianMesh -> creates mesh using hex things
+- checkMesh    -> does a check??
+- checkSurfaceMesh -> performs basic topology and geometric checks on input surface mesh
+- improveMeshQuality   -> applies a smoother to the mesh in order to improve overall quality, number of parameters is controllable via optional parameters
+- surfaceToFMS -> converts a common surface triangulation (stl) into fms format
+- surfaceFeatureEdges <input> <output> -angle <sFE_angle>  -> used for extracting feature edges (sharp angles). if output is a fms file, the extracted edges are stored as feature edges. otherwise generates patches bounded by the selected feature edges
+- surfaceGenerateBoundingBox <input stl file> <output stl file> xNeg xPos yNeg yPos zNeg zPos -> does the bounding box for boundary surfaces
+
+Have fun and keep rollin around
+Yours truly, Taters

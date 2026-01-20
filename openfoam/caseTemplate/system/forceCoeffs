@@ -19,14 +19,15 @@ forceCoeffs1
 
     patches         (plane);
     rho             rhoInf;      // Indicates incompressible
-    rhoInf          1;           // Required when rho = rhoInf
+    rhoInf          1.225;           // Required when rho = rhoInf
     liftDir         (0 0 1);
     dragDir         (1 0 0);
     CofR            (0 0 0);  // wing leading edge
     pitchAxis       (0 1 0);
-    magUInf         20;
-    lRef            1.04;        // length
-    Aref            0.1;        // Estimated
+    magUInf         10;
+    lRef            1.4;        // wing span
+    Aref            0.238;       // Projected wing area
+    // chord len: 0.173m
 }
 
 /*

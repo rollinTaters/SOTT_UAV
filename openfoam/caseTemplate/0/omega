@@ -10,21 +10,20 @@ FoamFile
     version     2.0;
     format      ascii;
     class       volScalarField;
-    object      k;
+    object      omega;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #include        "include/initialConditions"
 
-dimensions      [0 2 -2 0 0 0 0];
+dimensions      [0 0 -1 0 0 0 0];
 
-internalField   uniform $turbulentKE;
+internalField   uniform $turbulentOmega;
 
 boundaryField
 {
     #includeEtc "caseDicts/setConstraintTypes"
 
-    //- Define inlet conditions
     #include "include/fixedInlet"
 
     outlet
@@ -33,16 +32,16 @@ boundaryField
         inletValue      $internalField;
         value           $internalField;
     }
-
+/*
     floor
     {
-        type            kqRWallFunction;
+        type            omegaWallFunction;
         value           $internalField;
     }
-
+*/
     plane
     {
-        type            kqRWallFunction;
+        type            omegaWallFunction;
         value           $internalField;
     }
 

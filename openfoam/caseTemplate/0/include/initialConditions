@@ -6,7 +6,7 @@
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 
-flowVelocity         (11 0 1.5);
+flowVelocity         (UX UY UZ);
 pressure             0;
 turbulentKE          0.24;
 turbulentOmega       1.78;
