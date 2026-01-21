@@ -23,7 +23,7 @@ FoamFile
 
 application     simpleFoam;
 
-startFrom       startTime;
+startFrom       latestTime;
 
 startTime       0;
 
@@ -35,9 +35,9 @@ deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   100;
+writeInterval   40;
 
-purgeWrite      0;
+purgeWrite      1;
 
 writeFormat     binary;
 
@@ -53,15 +53,16 @@ runTimeModifiable true;
 
 functions
 {
-    #include "streamLines"
-    #include "wallBoundedStreamLines"
-    #include "cuttingPlane"
+    //#include "streamLines"
+    //#include "wallBoundedStreamLines"
+    //#include "cuttingPlane"
     #include "forceCoeffs"
-    #include "ensightWrite"
+    //#include "ensightWrite"
 
     #include "solverInfo"
     #include "graphFunctionObject"
     #include "foamReport"
+
 }
 
 
