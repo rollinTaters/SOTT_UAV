@@ -141,6 +141,7 @@ void Joystick::update()
 
     // Read buttons
     for (int i = 0; i < btnCount; i++) {
+        btnPrevState[i] = btnPressed[i];
         btnPressed[i] = SDL_JoystickGetButton(joy, i);
     }
 }
@@ -168,6 +169,13 @@ void Joystick::getControlInputs( ControlSignal& cs ) const
     cs.elevator = stick.y;
     cs.aileron  = stick.x;
     cs.rudder   = rudd;
+}
+
+bool Joystick::buttonReleased( int button ) const
+{
+    if( btnPrevState[button] == true && btnPressed[button] == false )
+        return true;
+    return false;
 }
 
 void Joystick::draw_debug()

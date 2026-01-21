@@ -1,12 +1,7 @@
-/*
-        MIT License
-
-        Copyright (c) 2025 rollinTaters, guvenchemy
-
-*/
-
 #include "../../common_code/src/comms_module.hpp"
 #include "../../common_code/src/video_feed.hpp"
+#include "joystick.hpp"
+#include "../../common_code/src/aircraft.hpp"
 #include "console_graphics.hpp"
 #include "raylib.h"
 #include "toast.hpp"
@@ -35,6 +30,15 @@ int eatPacket( CommsPacket& packet )
     cg::FI_panel.airspeed.update(ias);
     cg::FI_panel.vsi.update(vsi);
     */
+    break;
+
+    case CommsPacket::sim_telemetry:
+        cg::FI_panel.compass.update( packet.st_getAS_psi() );
+        cg::FI_panel.horizon.update( packet.st_getAS_theta(), packet.st_getAS_phi() );
+        cg::FI_panel.airspeed.update( packet.st_getAS_u() );
+        cg::FI_panel.altimeter.update( packet.st_getAS_z() );
+        cg::FI_panel.vsi.update( packet.st_getAS_w() );
+        cg::gauge_speed.updateVal( packet.st_getAS_u() );
     break;
 
     case CommsPacket::console_command:
@@ -69,6 +73,19 @@ int eatPacket( CommsPacket& packet )
     }
 }
 
+bool sendCommand2Sim( CommsModule& comms_module, const Joystick& joy, int ap_mode )
+{
+    static CommsPacket tx_packet( CommsPacket::console_sim_command );
+    static ControlSignal cs;
+    joy.getControlInputs( cs );
+    tx_packet.csc_setCS_throttle( cs.throttle );
+    tx_packet.csc_setCS_elevator( cs.elevator );
+    tx_packet.csc_setCS_aileron ( cs.aileron  );
+    tx_packet.csc_setCS_rudder  ( cs.rudder   );
+    tx_packet.csc_setCS_APMode( ap_mode );
+    tx_packet.csc_setCS_resetSim( joy.btnPressed[1] );
+    return comms_module.sendPacket( tx_packet, CommsModule::sim_channel );
+}
 
 int main() {
   std::cout << "SOTT UAV Command Console v0.2\n";
@@ -77,8 +94,14 @@ int main() {
   std::chrono::time_point<std::chrono::steady_clock> last_transmission_time;
   std::chrono::milliseconds transmission_interval(200);
 
+  // joystick... because.. you know.. planes and stuff
+  Joystick joy;
+
+  // AutoPilot mode
+  int ap_mode = 2;
+
   // create communications module
-  CommsModule comms_module(CommsModule::udp, CommsModule::console_channel);
+  CommsModule comms_module(CommsModule::console_channel);
   VideoFeed streamer(3); // using resolution mode 3
   
   Toast toast({700, 0}, {500, 200});
@@ -169,19 +192,15 @@ int main() {
     // process input
     cg::input.processInput(packet2send);
 
+    // TODO collect all inputs into the input manager
+    joy.update();
+    if( joy.buttonReleased(2) ) ap_mode = (ap_mode+1)%3;
+
     if (clock.now() >= last_transmission_time + transmission_interval) {
       // for testing purposes we send it to ngc, normally we wanna send to ccm
-      comms_module.sendPacket(packet2send, CommsModule::ngc_channel);
+      //comms_module.sendPacket(packet2send, CommsModule::ngc_channel);
+      sendCommand2Sim( comms_module, joy, ap_mode );
       last_transmission_time = clock.now();
-
-      /*// DEBUG
-      std::cout<<"we be sending this data: \n";
-      for( auto d: packet2send.data )
-      {
-          std::cout<<(int)d<<" ";
-      }
-      std::cout<<"\n";
-      // DEBUG END*/
     }
 
     // some sleep time to stop hogging the cpu, maybe raylibs fps limiter

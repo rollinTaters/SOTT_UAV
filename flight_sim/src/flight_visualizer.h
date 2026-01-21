@@ -121,7 +121,7 @@ public:
         cameraDistance = Clamp(cameraDistance, 10.0f, 200.0f);
     }
     
-    void Draw(const State& state, const ControlSignal& cs)
+    void Draw(const State& state, const ControlSignal& cs, const int ap_mode)
     {
         BeginDrawing();
         ClearBackground(skyColor);
@@ -164,17 +164,17 @@ public:
         
         // Draw HUD
         if (showHUD) {
-            DrawHUD(state,cs);
+            DrawHUD(state,cs,ap_mode);
         }
         
         // Draw controls help
         DrawControlsHelp();
         
-        ReadJoystick( pilot_control_signal );
+        ReadGamepad( pilot_control_signal );
         EndDrawing();
     }
 
-    void ReadJoystick( ControlSignal& cs )
+    void ReadGamepad( ControlSignal& cs )
     {
         int gamepad = 0;
         if( !IsGamepadAvailable(gamepad) )
@@ -322,7 +322,7 @@ private:
         DrawSphere(velEnd, 0.5f, MAGENTA);
     }
     
-    void DrawHUD(const State& state, const ControlSignal& control_s)
+    void DrawHUD(const State& state, const ControlSignal& control_s, const int ap_mode)
     {
         int y = 10;
         int lineHeight = 20;
@@ -336,7 +336,7 @@ private:
         }
 
         // Background
-        DrawRectangle(5, 5, 445, 280, Fade(BLACK, 0.3f));
+        DrawRectangle(5, 5, 445, 320, Fade(BLACK, 0.3f));
         
         // Position
         DrawTextFormatted(10, y, 20, WHITE, "Position (NED):");
@@ -377,7 +377,13 @@ private:
         DrawTextFormatted(10, y, 20, WHITE, "Flow Angles:");
         y += lineHeight;
         DrawTextFormatted(20, y, 16, LIGHTGRAY, "Alpha: %.2f°\t Beta: %.2f°", alpha, beta);
+        y += lineHeight + 5;
         
+        // Autopilot mode
+        DrawTextFormatted(10, y, 20, WHITE, "AutoPilot mode:");
+        y += lineHeight;
+        DrawTextFormatted(20, y, 16, LIGHTGRAY, "%d", ap_mode);
+
         // Draw artificial horizon (right side)
         int horizonX = screenWidth - 220;
         int horizonY = 100;

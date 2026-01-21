@@ -6,8 +6,9 @@ opencv_dir := /usr/local/include/opencv4
 MC_OBJECTS := main.o
 COMMON_OBJECTS := utility.o comms_module.o video_feed.o
 
-MC_RELEASE_OBJECTS = $(addprefix obj/, $(MC_OBJECTS))
+MC_RELEASE_OBJECTS = $(addprefix obj/release_, $(MC_OBJECTS))
 MC_COMMON_OBJECTS = $(addprefix ../common_code/obj/, $(COMMON_OBJECTS))
+MC_COMMON_RELEASE_OBJECTS = $(addprefix ../common_code/obj/release_, $(COMMON_OBJECTS))
 MC_DEBUG_O3_OBJECTS = $(addprefix obj/debug_o3_, $(MC_OBJECTS))
 MC_DEBUG_GUI_OBJECTS = $(addprefix obj/debug_gui_, $(MC_OBJECTS))
 MC_PI_OBJECTS = $(addprefix obj/pi_, $(MC_OBJECTS))
@@ -18,14 +19,13 @@ DEBUG_FLAGS_O3 := -g -ggdb -O3 -Wall -Wextra
 DEBUG_FLAGS_O0 := -g -ggdb -O0 -Wall -Wextra
 RELEASE_FLAGS := -O3 -std=c++17
 
-DEBUG_LDFLAGS := -Wl,-rpath=$(raylib_dir)/lib -I $(raylib_dir)/include -I $(opencv_dir) -L$(raylib_dir)/lib -lraylib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_highgui
-LDFLAGS := -Wl,-rpath=./lib -I $(raylib_dir)/include -L$(raylib_dir)/lib -lraylib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio
-PI_LDFLAGS := -Wl,-rpath=./lib -I $(raylib_x32_dir)/include -L$(raylib_x32_dir)/lib -lraylib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio
+DEBUG_LDFLAGS := -Wl,-rpath=$(raylib_dir)/lib -I$(raylib_dir)/include -I$(opencv_dir) -L$(raylib_dir)/lib -lraylib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio -lopencv_highgui
+LDFLAGS := -Wl,-rpath=./lib -I$(raylib_dir)/include -I$(opencv_dir) -L$(raylib_dir)/lib -lraylib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio
+PI_LDFLAGS := -Wl,-rpath=./lib -I$(raylib_x32_dir)/include -I$(opencv_dir) -L$(raylib_x32_dir)/lib -lraylib -lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio
 
 COMPILER := g++
 
-BUILD_VER := 0.2
-RELEASE_PATH := release_builds/v$(BUILD_VER)
+RELEASE_PATH := ../release_builds
 PI_TEST_PATH := ../pi_test
 
 .PHONY: clean clear release gui headless src/main.hpp
@@ -65,29 +65,22 @@ clear:
 
 # ==== Release commands ====
 release:
-	rm -r -f $(RELEASE_PATH) obj/*.o
-	make $(RELEASE_PATH)
+	rm -r -f obj/release_*.o
 	make MC_linux
-	tar -C ./$(RELEASE_PATH) -acf ./$(RELEASE_PATH)/linux64_$(BUILD_VER).tar MC_linux
+	#tar -C ./$(RELEASE_PATH) -acf ./$(RELEASE_PATH)/linux64_$(BUILD_VER).tar MC_linux
 
 $(PI_TEST_PATH):
 	mkdir $(PI_TEST_PATH)
 	mkdir $(PI_TEST_PATH)/lib
 	cp -r $(raylib_x32_dir)/lib $(PI_TEST_PATH)/lib
 
-$(RELEASE_PATH):
-	mkdir $(RELEASE_PATH)
-	#mkdir $(RELEASE_PATH)/win
-	#mkdir $(RELEASE_PATH)/win/mc
-	mkdir $(RELEASE_PATH)/linux
-	mkdir $(RELEASE_PATH)/linux/mc
 
 # ==== Linux Release build ====
 MC_linux: $(MC_RELEASE_OBJECTS)
 	#cp -r gfx $(RELEASE_PATH)/linux/mc/gfx
-	$(COMPILER) $(RELEASE_FLAGS) $(MC_RELEASE_OBJECTS) -o $(RELEASE_PATH)/linux/mc/MC_linux $(LDFLAGS)
+	$(COMPILER) $(RELEASE_FLAGS) $(MC_RELEASE_OBJECTS) $(MC_COMMON_RELEASE_OBJECTS) -o $(RELEASE_PATH)/MC_linux $(LDFLAGS)
 
-$(MC_RELEASE_OBJECTS): obj/%.o : src/%.cpp
+$(MC_RELEASE_OBJECTS): obj/release_%.o : src/%.cpp
 	$(COMPILER) $(RELEASE_FLAGS) -c $< -o $@ $(LDFLAGS)
 
 

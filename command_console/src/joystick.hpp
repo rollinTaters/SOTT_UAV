@@ -14,6 +14,7 @@ struct Joystick
     float axisValues[16] = {0};
     double axisValuesRaw[16] = {0};
     bool btnPressed[32] = {false};
+    bool btnPrevState[32] = {false};
 
 
 
@@ -26,6 +27,8 @@ struct Joystick
     void update();
 
     void getControlInputs( ControlSignal& cs ) const;
+
+    bool buttonReleased( int button ) const;
 
     void draw_debug();
 };

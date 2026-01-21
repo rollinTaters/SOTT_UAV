@@ -3,14 +3,16 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <chrono> // throttling of packet sends
 #include "aircraft.hpp"
-#include "joystick.hpp"
 #include "flight_visualizer.h"
 #include "autopilot.cpp"
+#include "comms_module.hpp"
 
 // Constants
 const double g = 9.81;  // gravity (m/s^2)
 const double rho = 1.225;  // air density at sea level (kg/m^3)
+bool flag_reset_sim = false;
 
 
 // Helper function to create a simple 2D table
@@ -261,6 +263,30 @@ void integrate(State& s, const Aircraft& ac, double dt, const ControlSignal& cs)
     INTEGRATE(p); INTEGRATE(q); INTEGRATE(r);
 }
 
+// sends simulation telemetry to command console
+bool sendTelemetry( CommsModule& comms, const State& s )
+{
+    static CommsPacket tx_packet( CommsPacket::sim_telemetry );
+    tx_packet.st_setAS_z    ( s.z );
+    tx_packet.st_setAS_u    ( s.u );
+    tx_packet.st_setAS_w    ( s.w );
+    tx_packet.st_setAS_phi  ( s.phi );
+    tx_packet.st_setAS_theta( s.theta );
+    tx_packet.st_setAS_psi  ( s.psi );
+    return comms.sendPacket( tx_packet, CommsModule::console_channel );
+}
+
+bool receiveCommands( CommsModule& comms, ControlSignal& cs )
+{
+    static CommsPacket rx_packet( CommsPacket::console_sim_command );
+    if( !comms.readPacket( rx_packet ) ) return false;
+    cs.throttle = rx_packet.csc_getCS_throttle();
+    cs.elevator = rx_packet.csc_getCS_elevator();
+    cs.aileron  = rx_packet.csc_getCS_aileron();
+    cs.rudder   = rx_packet.csc_getCS_rudder();
+    AP::mode = rx_packet.csc_getCS_APMode();
+    flag_reset_sim = rx_packet.csc_getCS_resetSim();
+}
 
 int main()
 {
@@ -277,12 +303,15 @@ int main()
     // Control inputs
     ControlSignal control_s;
 
-    // joystick
-    Joystick joy;
-    
     // Simulation parameters
     double dt = 0.01;  // 10ms timestep
     double simTime = 0.0;
+
+    // Comms with command console
+    CommsModule comms( CommsModule::sim_channel );
+    std::chrono::steady_clock clock;
+    std::chrono::time_point<std::chrono::steady_clock> last_transmission_time;
+    std::chrono::milliseconds transmission_interval(200);
 
     // GUI
     FlightVisualizer viz(1280, 720);
@@ -317,33 +346,25 @@ int main()
                      << "° | β=" << beta << "° | φ=" << state.phi * 180/M_PI << "°\n";
         }
         
-        // pilot input
-        //viz.GetControlInputs( control_s );
-
-        joy.update();
-        joy.getControlInputs( control_s );
-        joy.draw_debug();
+        // receive commands thru comms module
+        while( comms.packetAvailable() ) receiveCommands( comms, control_s );
 
         // tame it down a bit
         control_s.elevator *= 0.3f;
         control_s.aileron *= 0.3f;
         control_s.rudder *= 0.3f;
 
-        if( joy.btnPressed[2] )
-            AP::mode = AP::OFF;
-        if( joy.btnPressed[3] )
-            AP::mode = AP::ATTITUDE_HOLD;
-
         // autopilot does magic here
         AP::run( state, control_s );
 
         // DEBUG
-        if (IsKeyPressed(KEY_R) || joy.btnPressed[1])
+        if (IsKeyPressed(KEY_R) || flag_reset_sim )
         { // reset flight state
             state = {0};
             state.u = 80.0;   // 50 m/s forward
             state.z = -100;  // 1000m altitude (NED: down is positive)
             state.theta = 0.05;  // Small pitch up for trim
+            flag_reset_sim = false;
         }
         
         // Integrate
@@ -358,9 +379,15 @@ int main()
             break;
         }
 
+        // send telemetry back to command console
+        if (clock.now() >= last_transmission_time + transmission_interval) {
+            sendTelemetry( comms, state );
+            last_transmission_time = clock.now();
+        }
+
         // GUI
         viz.Update(state);
-        viz.Draw(state, control_s);
+        viz.Draw(state, control_s, AP::mode);
 
     }
     

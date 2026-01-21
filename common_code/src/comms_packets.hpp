@@ -17,6 +17,9 @@ struct CommsPacket
         flight_control,     // console -> FC
         fc_telemetry,       // FC -> console/MC
 
+        sim_telemetry,      // sim -> console
+        console_sim_command,// console -> sim
+
         ngc_command,        // MC -> NGC
         ngc_telemetry,      // NGC -> MC
 
@@ -137,61 +140,45 @@ struct CommsPacket
    we use these packets to transfer data between different subsystems
    Feel free to add your own packet parser methods if needed
 */
+    // ---- Console Command ----
+    // console -> sim
+    // joystick: ControlSignal: throttle, elevator, aileron, rudder
+    // joystick: reset_sim, set AP mode
+    float   csc_getCS_throttle(){ return readFloat_2( 0, -1.f, 1.f ); }
+    float   csc_getCS_elevator(){ return readFloat_2( 2, -1.f, 1.f ); }
+    float   csc_getCS_aileron (){ return readFloat_2( 4, -1.f, 1.f ); }
+    float   csc_getCS_rudder  (){ return readFloat_2( 6, -1.f, 1.f ); }
+    bool    csc_getCS_resetSim(){ return (read_1(7)>0)?(true):(false);}
+    uint8_t csc_getCS_APMode  (){ return read_1(8); }
 
-    /* XXX there is no fucking drive module. electronics team is indecisive 
-    // ---- data sent to the drive module ----
-    float getSpeed(){ return data1; }
-    float getSteer(){ return data2; }
-
-    void setSpeed( float inp ){ data1 = inp; }
-    void setSteer( float inp ){ data2 = inp; }
-
-    // ---- data sent from drive module ----
-    float getMotor1Temp(){ return data1; }
-    float getMotor1Amps(){ return data2; }
-    float getMotor1Vel() { return data3; }
-    float getMotor2Temp(){ return data1; }
-    float getMotor2Amps(){ return data2; }
-    float getMotor2Vel() { return data3; }
-
-    void setMotor1Temp( float inp ){ data1 = inp; }
-    void setMotor1Amps( float inp ){ data2 = inp; }
-    void setMotor1Vel ( float inp ){ data3 = inp; }
-    void setMotor2Temp( float inp ){ data1 = inp; }
-    void setMotor2Amps( float inp ){ data2 = inp; }
-    void setMotor2Vel ( float inp ){ data3 = inp; }
-    */
+    void csc_setCS_throttle( float   inp ){ writeFloat_2( inp, 0, -1.f, 1.f ); }
+    void csc_setCS_elevator( float   inp ){ writeFloat_2( inp, 2, -1.f, 1.f ); }
+    void csc_setCS_aileron ( float   inp ){ writeFloat_2( inp, 4, -1.f, 1.f ); }
+    void csc_setCS_rudder  ( float   inp ){ writeFloat_2( inp, 6, -1.f, 1.f ); }
+    void csc_setCS_resetSim( bool    inp ){ write_1( inp, 7 ); }
+    void csc_setCS_APMode  ( uint8_t inp ){ write_1( inp, 8 ); }
 
 
 
-    /* TODO
-    // ---- data sent/received to/from the turret module ----
-    float getPan() { return data1; }
-    float getTilt(){ return data2; }
-    bool getLaserStatus(){ return data3; }
+    // ---- Simulation Telemetry ----
+    // sim -> console
+    // aircraft state: z, u, w, phi, theta, psi,
+    float st_getAS_z    (){ return readFloat_2( 0, 0.f, 10000.f ); }
+    float st_getAS_u    (){ return readFloat_2( 2, 0.f, 100.f ); }
+    float st_getAS_w    (){ return readFloat_2( 4, -10.f, 10.f ); }
+    float st_getAS_phi  (){ return readFloat_2( 6, -PI/2, PI/2 ); }
+    float st_getAS_theta(){ return readFloat_2( 8, -PI/2, PI/2 ); }
+    float st_getAS_psi  (){ return readFloat_2(10, -PI/2, PI/2 ); }
 
-    void setPan ( float inp ){ data1 = inp; }
-    void setTilt( float inp ){ data2 = inp; }
-    void setLaserStatus( bool inp ){ data3 = inp; }
-    */
+    void st_setAS_z    ( float inp ){ writeFloat_2( inp, 0, 0.f, 10000.f ); }
+    void st_setAS_u    ( float inp ){ writeFloat_2( inp, 2, 0.f, 100.f ); }
+    void st_setAS_w    ( float inp ){ writeFloat_2( inp, 4, -10.f, 10.f ); }
+    void st_setAS_phi  ( float inp ){ writeFloat_2( inp, 6, -PI/2, PI/2 ); }
+    void st_setAS_theta( float inp ){ writeFloat_2( inp, 8, -PI/2, PI/2 ); }
+    void st_setAS_psi  ( float inp ){ writeFloat_2( inp,10, -PI/2, PI/2 ); }
 
-    /* TODO
-    // ---- data sent to the ngc module ----
-    uint8_t getControlMode(){ return data1; }
 
-    void setControlMode( uint8_t inp ){ data1 = inp; }
-    */
 
-    /* TODO
-    // ---- NGC TELEMETRY: from NGC to CCM ----
-    float getHeading(){ return data1; }
-    float getPitch()  { return data2; }
-    float getRoll()   { return data3; }
-
-    void setHeading( float inp ){ data1 = inp; }
-    void setPitch  ( float inp ){ data2 = inp; }
-    void setRoll   ( float inp ){ data3 = inp; }
-    */
 
     // ----  video data packet ----
     uint16_t getFrameID() const { return read_2( 0 ); }
@@ -237,19 +224,14 @@ struct CommsPacket
     void ct_setRoll   ( float inp ){ writeFloat_2( inp, 10, -PI/2, PI/2 ); }  // radian
     void ct_setSpeed  ( float inp ){ writeFloat_2( inp, 12, -5.f, 5.f ); }    // m/s   
 
-    // ---- Console Command, from Console to CCM ----
-    void cc_setManualSpeed( float inp ){ writeFloat_2( inp, 0, -5.f, 5.f ); }  // m/s
-    void cc_setManualSteer( float inp ){ writeFloat_2( inp, 2, -1.f, 1.f );}   // unitless
-
-    float cc_getManualSpeed(){ return readFloat_2( 0, -5.f, 5.f ); }   // m/s
-    float cc_getManualSteer(){ return readFloat_2( 2, -1.f, 1.f ); }   // unitless
-
+    /* OBSOLETE // ---- Console Command, from Console to CCM ----
     void cc_setTurret_azimuth( float rad ) { writeFloat_2( rad, 4, 0, 2*PI ); }
     void cc_setTurret_elevation( float rad ) { writeFloat_2( rad, 6, -PI, PI ); }
     float cc_getTurret_azimuth() { return readFloat_2( 4, 0, 2*PI ); }
     float cc_getTurret_elevation() { return readFloat_2( 6, -PI, PI ); }
     
     void cc_setLaserStatus( uint8_t mode ) { write_1( mode, 8 ); }
+    */
 
     // alternate packet type, this is CommsPacket::console_command_custom
     // Waypoint commands

@@ -5,7 +5,8 @@ namespace AP{
 
     enum AP_mode{
         OFF,    // off, meaning so as to be no longer continuing, operating or functioning; (she switched off the radio)
-        ATTITUDE_HOLD,    // Stability Assist System, keeps you pointing where you pointing
+        ATTITUDE_HOLD,      // controls only roll, pitch, yaw
+        SAS,                // Stability Assist System, dynamic attitude hold
         wip // TODO Work in Progress
     };
 
@@ -14,9 +15,21 @@ int mode = 0;
 float theta_target = 0.05f;
 float phi_target = 0.0f;
 
-void run( State& state, ControlSignal& cs )
+void resetAttitudeTarget()
 {
-    if( mode == ATTITUDE_HOLD )
+    theta_target = 0.05f;
+    phi_target = 0.0f;
+}
+
+void setAttitudeTarget( const State& state, float percent )
+{
+    theta_target = Lerp( theta_target, state.theta, percent );
+    phi_target = Lerp( phi_target, state.phi, percent );
+}
+
+void run( const State& state, ControlSignal& cs )
+{
+    if( mode == ATTITUDE_HOLD || mode == SAS )
     {
         // PI control
         cs.elevator -= -0.5 * (state.theta - theta_target) - 0.2 * state.q;  // Pitch hold
@@ -30,6 +43,9 @@ void run( State& state, ControlSignal& cs )
     } else {
         // nice day eh?
     }
+
+    // drift SAS target
+    if( mode == SAS ) setAttitudeTarget( state, 0.02f );
 }
 
 }   // namespace AP
