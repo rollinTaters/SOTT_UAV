@@ -30,7 +30,7 @@ private:
     
     // Trail history
     std::deque<Vector3> trailPoints;
-    int maxTrailPoints;
+    size_t maxTrailPoints;
     
     // UI state
     bool showGrid;

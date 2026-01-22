@@ -144,38 +144,38 @@ struct CommsPacket
     // console -> sim
     // joystick: ControlSignal: throttle, elevator, aileron, rudder
     // joystick: reset_sim, set AP mode
-    float   csc_getCS_throttle(){ return readFloat_2( 0, -1.f, 1.f ); }
-    float   csc_getCS_elevator(){ return readFloat_2( 2, -1.f, 1.f ); }
-    float   csc_getCS_aileron (){ return readFloat_2( 4, -1.f, 1.f ); }
-    float   csc_getCS_rudder  (){ return readFloat_2( 6, -1.f, 1.f ); }
-    bool    csc_getCS_resetSim(){ return (read_1(7)>0)?(true):(false);}
-    uint8_t csc_getCS_APMode  (){ return read_1(8); }
+    float   csc_getCS_throttle() const { return readFloat_2( 0, -1.f, 1.f ); }
+    float   csc_getCS_elevator() const { return readFloat_2( 2, -1.f, 1.f ); }
+    float   csc_getCS_aileron () const { return readFloat_2( 4, -1.f, 1.f ); }
+    float   csc_getCS_rudder  () const { return readFloat_2( 6, -1.f, 1.f ); }
+    uint8_t csc_getCS_resetSim() const { return read_1(8);}
+    uint8_t csc_getCS_APMode  () const { return read_1(9); }
 
     void csc_setCS_throttle( float   inp ){ writeFloat_2( inp, 0, -1.f, 1.f ); }
     void csc_setCS_elevator( float   inp ){ writeFloat_2( inp, 2, -1.f, 1.f ); }
     void csc_setCS_aileron ( float   inp ){ writeFloat_2( inp, 4, -1.f, 1.f ); }
     void csc_setCS_rudder  ( float   inp ){ writeFloat_2( inp, 6, -1.f, 1.f ); }
-    void csc_setCS_resetSim( bool    inp ){ write_1( inp, 7 ); }
-    void csc_setCS_APMode  ( uint8_t inp ){ write_1( inp, 8 ); }
+    void csc_setCS_resetSim( bool    inp ){ write_1( inp, 8 ); }
+    void csc_setCS_APMode  ( uint8_t inp ){ write_1( inp, 9 ); }
 
 
 
     // ---- Simulation Telemetry ----
     // sim -> console
     // aircraft state: z, u, w, phi, theta, psi,
-    float st_getAS_z    (){ return readFloat_2( 0, 0.f, 10000.f ); }
-    float st_getAS_u    (){ return readFloat_2( 2, 0.f, 100.f ); }
-    float st_getAS_w    (){ return readFloat_2( 4, -10.f, 10.f ); }
-    float st_getAS_phi  (){ return readFloat_2( 6, -PI/2, PI/2 ); }
-    float st_getAS_theta(){ return readFloat_2( 8, -PI/2, PI/2 ); }
-    float st_getAS_psi  (){ return readFloat_2(10, -PI/2, PI/2 ); }
+    float st_getAS_z    () const { return readFloat_2( 0, -10000.f, 0.f ); }
+    float st_getAS_u    () const { return readFloat_2( 2, -10.f, 100.f ); }
+    float st_getAS_w    () const { return readFloat_2( 4, -100.f, 100.f ); }
+    float st_getAS_phi  () const { return readFloat_2( 6, -PI, PI ); }
+    float st_getAS_theta() const { return readFloat_2( 8, -PI/2, PI/2 ); }
+    float st_getAS_psi  () const { return readFloat_2(10, 0, 2*PI ); }
 
-    void st_setAS_z    ( float inp ){ writeFloat_2( inp, 0, 0.f, 10000.f ); }
-    void st_setAS_u    ( float inp ){ writeFloat_2( inp, 2, 0.f, 100.f ); }
-    void st_setAS_w    ( float inp ){ writeFloat_2( inp, 4, -10.f, 10.f ); }
-    void st_setAS_phi  ( float inp ){ writeFloat_2( inp, 6, -PI/2, PI/2 ); }
+    void st_setAS_z    ( float inp ){ writeFloat_2( inp, 0, -10000.f, 0.f ); }
+    void st_setAS_u    ( float inp ){ writeFloat_2( inp, 2, -10.f, 100.f ); }
+    void st_setAS_w    ( float inp ){ writeFloat_2( inp, 4, -100.f, 100.f ); }
+    void st_setAS_phi  ( float inp ){ writeFloat_2( inp, 6, -PI, PI ); }
     void st_setAS_theta( float inp ){ writeFloat_2( inp, 8, -PI/2, PI/2 ); }
-    void st_setAS_psi  ( float inp ){ writeFloat_2( inp,10, -PI/2, PI/2 ); }
+    void st_setAS_psi  ( float inp ){ writeFloat_2( inp,10, 0, 2*PI ); }
 
 
 
@@ -201,16 +201,16 @@ struct CommsPacket
     }
 
     // ---- Console Telemetry, from CCM to Console ----
-    float ct_getMotor1Temp(){ return readFloat_1( 0, -20.f, 250.f ); }  // celsius
-    float ct_getMotor2Temp(){ return readFloat_1( 1, -20.f, 250.f ); }  // celsius
-    float ct_getMotor1Amps(){ return readFloat_1( 2, -10.f, 300.f ); }  // ampere
-    float ct_getMotor2Amps(){ return readFloat_1( 3, -10.f, 300.f ); }  // ampere 
-    float ct_getMotor1Vel() { return readFloat_1( 4, -5.f, 5.f ); }     // m/s
-    float ct_getMotor2Vel() { return readFloat_1( 5, -5.f, 5.f ); }     // m/s
-    float ct_getHeading(){ return readFloat_2(  6, 0.f, PI ); }      // radian
-    float ct_getPitch()  { return readFloat_2(  8, -PI/2, PI/2 ); }  // radian
-    float ct_getRoll()   { return readFloat_2( 10, -PI/2, PI/2 ); }  // radian
-    float ct_getSpeed()  { return readFloat_2( 12, -5.f, 5.f ); }    // m/s
+    float ct_getMotor1Temp() const { return readFloat_1( 0, -20.f, 250.f ); }  // celsius
+    float ct_getMotor2Temp() const { return readFloat_1( 1, -20.f, 250.f ); }  // celsius
+    float ct_getMotor1Amps() const { return readFloat_1( 2, -10.f, 300.f ); }  // ampere
+    float ct_getMotor2Amps() const { return readFloat_1( 3, -10.f, 300.f ); }  // ampere 
+    float ct_getMotor1Vel()  const { return readFloat_1( 4, -5.f, 5.f ); }     // m/s
+    float ct_getMotor2Vel()  const { return readFloat_1( 5, -5.f, 5.f ); }     // m/s
+    float ct_getHeading()    const { return readFloat_2(  6, 0.f, PI ); }      // radian
+    float ct_getPitch()      const { return readFloat_2(  8, -PI/2, PI/2 ); }  // radian
+    float ct_getRoll()       const { return readFloat_2( 10, -PI/2, PI/2 ); }  // radian
+    float ct_getSpeed()      const { return readFloat_2( 12, -5.f, 5.f ); }    // m/s
 
 
     void ct_setMotor1Temp( float inp ){ writeFloat_1( inp, 0, -20.f, 250.f ); } // celsius

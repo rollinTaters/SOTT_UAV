@@ -31,7 +31,6 @@ public:
     ~CommsModule();
 
     bool sendPacket( CommsPacket, Channel );
-    bool sendRequest( CommsPacket::PacketType );
     bool packetAvailable();
     bool readPacket( CommsPacket& );
 

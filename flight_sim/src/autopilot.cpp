@@ -10,7 +10,7 @@ namespace AP{
         wip // TODO Work in Progress
     };
 
-int mode = 0;
+int mode = 2;
 
 float theta_target = 0.05f;
 float phi_target = 0.0f;

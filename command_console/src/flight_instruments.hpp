@@ -35,7 +35,7 @@ public:
 
         rlPushMatrix();
             rlTranslatef(center.x, center.y, 0);
-            rlRotatef(roll, 0, 0, 1); // Rotate for Roll
+            rlRotatef(-roll, 0, 0, 1); // Rotate for Roll
             rlTranslatef(0, pitchOffset, 0); // Translate for Pitch
 
             // Sky (Blue)

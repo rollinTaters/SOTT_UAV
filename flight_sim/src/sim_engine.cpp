@@ -263,16 +263,42 @@ void integrate(State& s, const Aircraft& ac, double dt, const ControlSignal& cs)
     INTEGRATE(p); INTEGRATE(q); INTEGRATE(r);
 }
 
+// log to std::cout
+void printLog( const State& state, double simTime, std::ofstream& outFile )
+{
+    // Output state
+    double V = sqrt(state.u*state.u + state.v*state.v + state.w*state.w);
+    double alpha = atan2(state.w, state.u) * 180.0 / M_PI;
+    double beta = asin(std::max(-1.0, std::min(1.0, state.v / V))) * 180.0 / M_PI;
+    
+    outFile << simTime << "," << state.x << "," << state.y << "," 
+           << -state.z << "," << state.u << "," << state.v << "," 
+           << state.w << "," << state.phi << "," << state.theta << "," 
+           << state.psi << "," << state.p << "," << state.q << "," 
+           << state.r << "," << V << "," << alpha << "," << beta << "\n";
+    
+    std::cout << "t=" << simTime << "s | Alt=" << -state.z 
+             << "m | V=" << V << "m/s | α=" << alpha 
+             << "° | β=" << beta << "° | φ=" << state.phi * 180/M_PI << "°\n";
+}
+
 // sends simulation telemetry to command console
 bool sendTelemetry( CommsModule& comms, const State& s )
 {
     static CommsPacket tx_packet( CommsPacket::sim_telemetry );
+    // phi -> -PI +PI
+    float phi = fmod(s.phi+PI, 2*PI)-PI;
+    // theta -> -PI/2 +PI/2
+    float theta = fmod(s.theta+PI/2, PI)-(PI/2);
+    // psi -> 0 +2PI
+    float psi = fmod(s.psi, 2*PI);
+
     tx_packet.st_setAS_z    ( s.z );
     tx_packet.st_setAS_u    ( s.u );
     tx_packet.st_setAS_w    ( s.w );
-    tx_packet.st_setAS_phi  ( s.phi );
-    tx_packet.st_setAS_theta( s.theta );
-    tx_packet.st_setAS_psi  ( s.psi );
+    tx_packet.st_setAS_phi  ( phi );
+    tx_packet.st_setAS_theta( theta );
+    tx_packet.st_setAS_psi  ( psi );
     return comms.sendPacket( tx_packet, CommsModule::console_channel );
 }
 
@@ -280,12 +306,31 @@ bool receiveCommands( CommsModule& comms, ControlSignal& cs )
 {
     static CommsPacket rx_packet( CommsPacket::console_sim_command );
     if( !comms.readPacket( rx_packet ) ) return false;
+    if( rx_packet.packet_type != CommsPacket::console_sim_command ) return false;
+
+    /*
+    // DEBUG
+    static uint8_t raw[32];
+    rx_packet.getRaw( raw );
+    std::cout<<"received packet: ";
+    for(int i=0; i<32; i++)
+        std::cout<<(int)raw[i]<<" ";
+    std::cout<<"\n";
+    // DEBUG END
+    */
+
     cs.throttle = rx_packet.csc_getCS_throttle();
     cs.elevator = rx_packet.csc_getCS_elevator();
     cs.aileron  = rx_packet.csc_getCS_aileron();
     cs.rudder   = rx_packet.csc_getCS_rudder();
     AP::mode = rx_packet.csc_getCS_APMode();
     flag_reset_sim = rx_packet.csc_getCS_resetSim();
+
+    // tame it down a bit
+    cs.elevator *= 0.3f;
+    cs.aileron *= 0.3f;
+    cs.rudder *= 0.3f;
+    return true;
 }
 
 int main()
@@ -302,6 +347,7 @@ int main()
     
     // Control inputs
     ControlSignal control_s;
+    ControlSignal pilot_cs;
 
     // Simulation parameters
     double dt = 0.01;  // 10ms timestep
@@ -311,7 +357,7 @@ int main()
     CommsModule comms( CommsModule::sim_channel );
     std::chrono::steady_clock clock;
     std::chrono::time_point<std::chrono::steady_clock> last_transmission_time;
-    std::chrono::milliseconds transmission_interval(200);
+    std::chrono::milliseconds transmission_interval(100);
 
     // GUI
     FlightVisualizer viz(1280, 720);
@@ -328,31 +374,17 @@ int main()
     {
         if( viz.ShouldClose() ) break;  // GUI wanted to end program
 
-        // Output state
+        /*
+        // output state to cout
         if (fmod(simTime, 0.1) < dt)
-        {
-            double V = sqrt(state.u*state.u + state.v*state.v + state.w*state.w);
-            double alpha = atan2(state.w, state.u) * 180.0 / M_PI;
-            double beta = asin(std::max(-1.0, std::min(1.0, state.v / V))) * 180.0 / M_PI;
-            
-            outFile << simTime << "," << state.x << "," << state.y << "," 
-                   << -state.z << "," << state.u << "," << state.v << "," 
-                   << state.w << "," << state.phi << "," << state.theta << "," 
-                   << state.psi << "," << state.p << "," << state.q << "," 
-                   << state.r << "," << V << "," << alpha << "," << beta << "\n";
-            
-            std::cout << "t=" << simTime << "s | Alt=" << -state.z 
-                     << "m | V=" << V << "m/s | α=" << alpha 
-                     << "° | β=" << beta << "° | φ=" << state.phi * 180/M_PI << "°\n";
-        }
+            printLog( state, simTime, outFile );
+        */
         
         // receive commands thru comms module
-        while( comms.packetAvailable() ) receiveCommands( comms, control_s );
+        while( comms.packetAvailable() ) receiveCommands( comms, pilot_cs );
 
-        // tame it down a bit
-        control_s.elevator *= 0.3f;
-        control_s.aileron *= 0.3f;
-        control_s.rudder *= 0.3f;
+        // we hold the last pilot cs steady
+        control_s = pilot_cs;
 
         // autopilot does magic here
         AP::run( state, control_s );

@@ -14,7 +14,7 @@ for CASE in ./U*; do
     )
 
     if [ -z "$Cd" ]; then
-    	echo "⚠️  No data for $CASE"
+    	echo "No data for $CASE"
     	continue
 	fi
 

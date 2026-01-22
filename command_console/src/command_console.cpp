@@ -10,43 +10,18 @@
 #include <iostream>
 #include <thread> // this_thread::sleep_for
 
-int eatPacket( CommsPacket& packet )
+int eatPacket( CommsPacket packet )
 {
     // make sense of packet
-    switch (packet.packet_type)
+    if( packet.packet_type == CommsPacket::sim_telemetry )
     {
-    case CommsPacket::console_telemetry:
-        cg::FI_panel.compass.update(packet.ct_getHeading());
-        cg::FI_panel.horizon.update(packet.ct_getPitch(), packet.ct_getRoll());
-        cg::E_panel.temp1.updateVal(packet.ct_getMotor1Temp());
-        cg::E_panel.temp2.updateVal(packet.ct_getMotor2Temp());
-        cg::E_panel.amp1.updateVal(packet.ct_getMotor1Amps());
-        cg::E_panel.amp2.updateVal(packet.ct_getMotor2Amps());
-        cg::gauge_speed.updateVal(packet.ct_getSpeed());
-        /*
-    cg::FI_panel.horizon.update(p, r);
-    cg::FI_panel.compass.update(h);
-    cg::FI_panel.altimeter.update(a);
-    cg::FI_panel.airspeed.update(ias);
-    cg::FI_panel.vsi.update(vsi);
-    */
-    break;
-
-    case CommsPacket::sim_telemetry:
-        cg::FI_panel.compass.update( packet.st_getAS_psi() );
-        cg::FI_panel.horizon.update( packet.st_getAS_theta(), packet.st_getAS_phi() );
+        cg::FI_panel.compass.update( packet.st_getAS_psi()*180/PI );
+        cg::FI_panel.horizon.update( packet.st_getAS_theta()*180/PI, packet.st_getAS_phi()*180/PI );
         cg::FI_panel.airspeed.update( packet.st_getAS_u() );
-        cg::FI_panel.altimeter.update( packet.st_getAS_z() );
-        cg::FI_panel.vsi.update( packet.st_getAS_w() );
+        cg::FI_panel.altimeter.update( -packet.st_getAS_z() );
+        cg::FI_panel.vsi.update( -packet.st_getAS_w() );
         cg::gauge_speed.updateVal( packet.st_getAS_u() );
-    break;
-
-    case CommsPacket::console_command:
-        std::cerr << " why are we receiving a console command packet when we "
-                     "should be the one sending it?\n";
-    break;
-
-    case CommsPacket::video_packet:
+    } else if( packet.packet_type == CommsPacket::video_packet ){
     /*
         streamer.receivePacket(packet);
         if (streamer.isFrameReady())
@@ -60,17 +35,20 @@ int eatPacket( CommsPacket& packet )
           video_texFrame = LoadTextureFromImage(video_frame);
         }
         */
-    break;
-
-    case CommsPacket::undefined:
-        std::cerr << "Warning: Received undefined packet type" << std::endl;
-    break;
-
-    default:
+    } else if( packet.packet_type == CommsPacket::console_telemetry ){
+        // an artifact from the Ground Vehicle
+        cg::FI_panel.compass.update(packet.ct_getHeading());
+        cg::FI_panel.horizon.update(packet.ct_getPitch(), packet.ct_getRoll());
+        cg::E_panel.temp1.updateVal(packet.ct_getMotor1Temp());
+        cg::E_panel.temp2.updateVal(packet.ct_getMotor2Temp());
+        cg::E_panel.amp1.updateVal(packet.ct_getMotor1Amps());
+        cg::E_panel.amp2.updateVal(packet.ct_getMotor2Amps());
+        cg::gauge_speed.updateVal(packet.ct_getSpeed());
+    } else {
         std::cerr << "Error: Received unknown packet type: "
                   << (int)packet.packet_type << std::endl;
-    break;
     }
+      return packet.packet_type;
 }
 
 bool sendCommand2Sim( CommsModule& comms_module, const Joystick& joy, int ap_mode )
@@ -84,6 +62,18 @@ bool sendCommand2Sim( CommsModule& comms_module, const Joystick& joy, int ap_mod
     tx_packet.csc_setCS_rudder  ( cs.rudder   );
     tx_packet.csc_setCS_APMode( ap_mode );
     tx_packet.csc_setCS_resetSim( joy.btnPressed[1] );
+
+    /*
+      // DEBUG
+      static uint8_t raw[32];
+      tx_packet.getRaw( raw );
+      std::cout<<"com2sim: ";
+      for(int i=0; i<32; i++)
+          std::cout<<(int)raw[i];
+      std::cout<<"\n";
+      // DEBUG END
+      */
+
     return comms_module.sendPacket( tx_packet, CommsModule::sim_channel );
 }
 
@@ -100,22 +90,17 @@ int main() {
   // AutoPilot mode
   int ap_mode = 2;
 
-  // create communications module
+  // ---- Comms Setup ----
   CommsModule comms_module(CommsModule::console_channel);
   VideoFeed streamer(3); // using resolution mode 3
-  
-  Toast toast({700, 0}, {500, 200});
-  
+  CommsPacket packet; // this one we use for the data we received
 #ifndef TABLET_MODE
   // Serial connection ( to an arduino, it will relay packets thru rf24 )
   SerialManager serial;
 #endif
-
-  // declare dummy packets
-  CommsPacket packet; // this one we use for the data we received
-  CommsPacket packet2send(
-      CommsPacket::console_command); // this one we use for sending console
-                                     // packets
+  // ---- Comms Setup ----
+  
+  Toast toast({700, 0}, {500, 200});
 
   // graphics initialization
   const int screenWidth = 1900;
@@ -152,19 +137,12 @@ int main() {
 #endif
 
     // clear window for next frame
-    BeginDrawing();
+    BeginDrawing();     // ================ BEGIN DRAWING
     ClearBackground(Color{180, 180, 180, 255});
 
-    // press t for debug test
-    if (IsKeyDown(KEY_T)) {
-      cg::DEBUG_gauge_test();
-    }
-
 #ifndef TABLET_MODE
-    // TODO bury serial manager into comms module
     // draw port selection and serial manager verbose output
     serial.drawMenu();
-
     // check incoming serial packets
     while( serial.getPacket(packet) )
     {
@@ -177,9 +155,33 @@ int main() {
     {
       // read packet
       comms_module.readPacket(packet);
+
+      /*
+      // DEBUG
+      std::cout<<"hellow!\n";
+      static CommsPacket last_packet;
+      static uint8_t raw[32];
+      static uint8_t last_raw[32];
+      packet.getRaw( raw );
+      if( memcmp( raw, last_raw, sizeof(CommsPacket) ) == 0 )
+          std::cout<<"got same packet\n";
+      else {
+          std::cout<<"prev: ";
+          for(int i=0; i<32; i++)
+              std::cout<<(int)last_raw[i];
+          std::cout<<"\ncurr: ";
+          for(int i=0; i<32; i++)
+              std::cout<<(int)raw[i];
+          std::cout<<"\n";
+      }
+      last_packet = packet;
+      last_packet.getRaw( last_raw );
+      // END OF DEBUG
+      */
+
+      //std::cout<<"eatPacket returned: "<<eatPacket(packet)<<"\n";
       eatPacket(packet);
     }
-
 
     toast.render();
 
@@ -187,18 +189,17 @@ int main() {
     cg::renderGauges();
     DrawTextureEx( video_texFrame, {200,50}, 0.f, 3.f, WHITE);
 
-    EndDrawing();
+    // DEBUG
+    joy.draw_debug();
 
-    // process input
-    cg::input.processInput(packet2send);
+    EndDrawing();       // ================ END DRAWING
 
     // TODO collect all inputs into the input manager
     joy.update();
     if( joy.buttonReleased(2) ) ap_mode = (ap_mode+1)%3;
 
+    // Packet transmission
     if (clock.now() >= last_transmission_time + transmission_interval) {
-      // for testing purposes we send it to ngc, normally we wanna send to ccm
-      //comms_module.sendPacket(packet2send, CommsModule::ngc_channel);
       sendCommand2Sim( comms_module, joy, ap_mode );
       last_transmission_time = clock.now();
     }

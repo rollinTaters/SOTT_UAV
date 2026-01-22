@@ -41,11 +41,48 @@ bool CommsModule::sendPacket( CommsPacket p, Channel c )
     return false;
 }
 
-bool CommsModule::sendRequest( CommsPacket::PacketType req )
+bool CommsModule::packetAvailable()
 {
-    // Implement request sending logic
+    fd_set readfds;
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 10000;  // 10ms timeout
+
+    FD_ZERO(&readfds);
+    FD_SET(m_socket, &readfds);
+
+    // Use select to wait for data
+    int result = select(m_socket + 1, &readfds, nullptr, nullptr, &timeout);
+    //return result > 0;  // Returns true if the socket is ready
+    
+    if (result > 0 && FD_ISSET(m_socket, &readfds)) {
+        char buffer[sizeof(CommsPacket)];
+        ssize_t peeked_bytes = recv(m_socket, buffer, sizeof(buffer), MSG_PEEK);
+
+        // Check for full packet
+        return (peeked_bytes == sizeof(CommsPacket));
+    }
+    return false;  // No data or timeout
+}
+
+bool CommsModule::readPacket( CommsPacket& p )
+{
+    ssize_t received_bytes = recvfrom(
+                m_socket,
+                &p,
+                sizeof(CommsPacket),
+                0,
+                (struct sockaddr*)&m_recv_addr,
+                &m_recv_addr_len );
+
+    if (received_bytes == sizeof(CommsPacket))
+        return true;
     return false;
 }
+
+
+////////////////////////////////////
+/*
 
 bool CommsModule::packetAvailable()
 {
@@ -57,18 +94,32 @@ bool CommsModule::packetAvailable()
     FD_ZERO(&readfds);
     FD_SET(m_socket, &readfds);
 
+    // Use select to wait for data
     int result = select(m_socket + 1, &readfds, nullptr, nullptr, &timeout);
-    return result > 0;  // Returns true if the socket is ready
+
+    // If there is data, check if we can read it
+    if (result > 0 && FD_ISSET(m_socket, &readfds)) {
+        char buffer[sizeof(CommsPacket)];
+        ssize_t received_bytes = recvfrom(m_socket, buffer, sizeof(buffer), MSG_DONTWAIT, 
+                                          (struct sockaddr*)&m_recv_addr, &m_recv_addr_len);
+
+        // If we receive a valid packet, store it
+        if (received_bytes == sizeof(CommsPacket)) {
+            memcpy(&lastReceivedPacket, buffer, sizeof(CommsPacket)); // Store received packet
+            return true; // Indicate that a new packet is available
+        }
+    }
+
+    return false; // No data available
 }
 
 bool CommsModule::readPacket( CommsPacket& p )
 {
-    ssize_t received_bytes = recvfrom(m_socket, &p, sizeof(CommsPacket), 0,
-                                      (struct sockaddr*)&m_recv_addr, &m_recv_addr_len);
-
-    if (received_bytes == sizeof(CommsPacket)) {
-        return true;
-    }
-    return false;
+    // Copy the last received packet to the provided reference
+    p = lastReceivedPacket;
+    
+    // Return true if the last received packet is valid
+    return (memcmp(&lastReceivedPacket, &p, sizeof(CommsPacket)) == 0);
 }
 
+*/
